@@ -14,10 +14,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   forwardRef,
+  useCallback,
   useEffect,
   useRef,
   useState,
   useSyncExternalStore,
+  type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 
@@ -31,6 +33,13 @@ import type {
   GameplayMovie,
 } from "@/features/games/gameplay-data";
 import { cn } from "@/lib/utils";
+import {
+  removeConfirmedAnswer,
+  resolveOptimisticResume,
+  retryDelay,
+  upsertOfflineAnswer,
+  type OfflineAnswer,
+} from "@/lib/algorithms/offline-answer-queue";
 import type { MovieReaction } from "@/types/database";
 
 const SWIPE_DISTANCE = 88;
@@ -50,6 +59,50 @@ const REACTIONS: Array<{
 ];
 
 type Direction = -1 | 1;
+type SyncState = "offline" | "saved" | "syncing";
+
+function ReactionIcon({ name }: { name: MovieReaction }) {
+  const paths: Record<MovieReaction, ReactNode> = {
+    loved: (
+      <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21.3l7.8-7.8 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z" />
+    ),
+    liked: (
+      <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3m0 11h10.3a2 2 0 0 0 2-1.7l1.4-9A2 2 0 0 0 18.7 9H14l.7-3.6A2.8 2.8 0 0 0 12 2l-5 9v11Z" />
+    ),
+    meh: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M8.5 10h.01M15.5 10h.01M8.5 15h7" />
+      </>
+    ),
+    cant_remember: (
+      <>
+        <path d="M9.4 9a3 3 0 1 1 4.8 2.4c-1.4 1-2.2 1.6-2.2 3M12 18h.01" />
+        <circle cx="12" cy="12" r="9" />
+      </>
+    ),
+  };
+
+  return (
+    <svg
+      aria-hidden="true"
+      className="block h-6 w-6 shrink-0"
+      fill="none"
+      height="24"
+      role="presentation"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2.25"
+      style={{ color: "inherit", display: "block" }}
+      vectorEffect="non-scaling-stroke"
+      viewBox="0 0 24 24"
+      width="24"
+    >
+      {paths[name]}
+    </svg>
+  );
+}
 
 const subscribeToBrowser = () => () => undefined;
 const getBrowserSnapshot = () => true;
@@ -62,6 +115,11 @@ function shouldCommitSwipe(offset: number, velocity: number) {
   );
 }
 
+function triggerTactileFeedback(pattern: number | number[] = 8) {
+  if (typeof navigator === "undefined" || !("vibrate" in navigator)) return;
+  navigator.vibrate(pattern);
+}
+
 export function SwipeGame({ game }: { game: GameplayData }) {
   const router = useRouter();
   const reduceMotion = useReducedMotion();
@@ -70,9 +128,9 @@ export function SwipeGame({ game }: { game: GameplayData }) {
   const [direction, setDirection] = useState<Direction>(1);
   const [comment, setComment] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [resultsReady, setResultsReady] = useState(
-    game.status === "completed",
-  );
+  const [queuedCount, setQueuedCount] = useState(0);
+  const [syncState, setSyncState] = useState<SyncState>("saved");
+  const [resultsReady, setResultsReady] = useState(game.status === "completed");
   const [resultsState, setResultsState] = useState<
     "waiting" | "processing" | "error"
   >("waiting");
@@ -80,20 +138,162 @@ export function SwipeGame({ game }: { game: GameplayData }) {
   const [hoveredReaction, setHoveredReaction] = useState<MovieReaction | null>(
     null,
   );
-  const persistenceQueue = useRef(Promise.resolve());
+  const offlineQueue = useRef<OfflineAnswer[]>([]);
+  const flushPromise = useRef<Promise<void> | null>(null);
+  const flushQueueRef = useRef<() => Promise<void>>(async () => undefined);
+  const retryAttempt = useRef(0);
+  const retryTimer = useRef<number | null>(null);
   const commentTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resultsCheckPending = useRef(false);
   const reactionDock = useRef<HTMLDivElement>(null);
   const gestureX = useMotionValue(0);
   const unseenBackground = useTransform(
     gestureX,
-    [-140, -24, 0],
-    [0.3, 0.06, 0],
+    [-180, -30, 0],
+    [0.36, 0.035, 0],
   );
-  const seenBackground = useTransform(gestureX, [0, 24, 140], [0, 0.06, 0.24]);
-  const dockOpacity = useTransform(gestureX, [12, 54, 110], [0, 0.5, 1]);
+  const seenBackground = useTransform(
+    gestureX,
+    [0, 30, 180],
+    [0, 0.035, 0.32],
+  );
+  const dockOpacity = useTransform(gestureX, [8, 30, 90], [0, 0.82, 1]);
   const currentMovie = game.movies[currentIndex];
   const complete = game.complete || currentIndex >= game.movies.length;
+  const storageKey = `vidi:answer-journal:${game.inviteCode}:${game.playerId}:v1`;
+
+  const writeJournal = useCallback(
+    (queue: readonly OfflineAnswer[]) => {
+      try {
+        if (queue.length)
+          localStorage.setItem(storageKey, JSON.stringify(queue));
+        else localStorage.removeItem(storageKey);
+        return true;
+      } catch {
+        setError("This browser could not safely queue your answer.");
+        return false;
+      }
+    },
+    [storageKey],
+  );
+
+  const flushQueue = useCallback(async () => {
+    if (flushPromise.current) return flushPromise.current;
+    const run = async () => {
+      if (!navigator.onLine) {
+        setSyncState("offline");
+        return;
+      }
+      while (offlineQueue.current.length) {
+        setSyncState("syncing");
+        const answer = offlineQueue.current[0];
+        let result;
+        try {
+          result = await recordAnswerAction({
+            inviteCode: game.inviteCode,
+            reaction: answer.reaction,
+            seen: answer.seen,
+            tmdbId: answer.tmdbId,
+          });
+        } catch {
+          result = { success: false };
+        }
+        if (!result.success) {
+          setSyncState(navigator.onLine ? "syncing" : "offline");
+          if (retryTimer.current) window.clearTimeout(retryTimer.current);
+          retryTimer.current = window.setTimeout(
+            () => void flushQueueRef.current(),
+            retryDelay(retryAttempt.current++),
+          );
+          return;
+        }
+        retryAttempt.current = 0;
+        offlineQueue.current = removeConfirmedAnswer(
+          offlineQueue.current,
+          answer,
+        );
+        writeJournal(offlineQueue.current);
+        setQueuedCount(offlineQueue.current.length);
+      }
+      setSyncState("saved");
+      setError(null);
+    };
+    flushPromise.current = run().finally(() => {
+      flushPromise.current = null;
+    });
+    return flushPromise.current;
+  }, [game.inviteCode, writeJournal]);
+
+  useEffect(() => {
+    flushQueueRef.current = flushQueue;
+  }, [flushQueue]);
+
+  useEffect(() => {
+    let restored: OfflineAnswer[] = [];
+    try {
+      const raw: unknown = JSON.parse(localStorage.getItem(storageKey) ?? "[]");
+      if (Array.isArray(raw)) {
+        restored = raw.filter(
+          (item): item is OfflineAnswer =>
+            Boolean(item) &&
+            typeof item === "object" &&
+            typeof (item as OfflineAnswer).tmdbId === "number" &&
+            typeof (item as OfflineAnswer).seen === "boolean" &&
+            ((item as OfflineAnswer).reaction === null ||
+              ["loved", "liked", "meh", "cant_remember"].includes(
+                String((item as OfflineAnswer).reaction),
+              )),
+        );
+      }
+    } catch {
+      localStorage.removeItem(storageKey);
+    }
+    const validMovieIds = new Set(
+      game.movies.slice(game.currentIndex).map((movie) => movie.tmdbId),
+    );
+    offlineQueue.current = restored.filter((answer) =>
+      validMovieIds.has(answer.tmdbId),
+    );
+    writeJournal(offlineQueue.current);
+    setQueuedCount(offlineQueue.current.length);
+    const resume = resolveOptimisticResume(
+      game.movies.map((movie) => movie.tmdbId),
+      game.currentIndex,
+      game.reactionPending,
+      offlineQueue.current,
+    );
+    setCurrentIndex(resume.currentIndex);
+    setReactionPending(resume.reactionPending);
+    setSyncState(
+      navigator.onLine
+        ? offlineQueue.current.length
+          ? "syncing"
+          : "saved"
+        : "offline",
+    );
+    void flushQueue();
+
+    const online = () => void flushQueue();
+    const offline = () => setSyncState("offline");
+    const visible = () =>
+      document.visibilityState === "visible" && void flushQueue();
+    window.addEventListener("online", online);
+    window.addEventListener("offline", offline);
+    document.addEventListener("visibilitychange", visible);
+    return () => {
+      window.removeEventListener("online", online);
+      window.removeEventListener("offline", offline);
+      document.removeEventListener("visibilitychange", visible);
+      if (retryTimer.current) window.clearTimeout(retryTimer.current);
+    };
+  }, [
+    flushQueue,
+    game.currentIndex,
+    game.movies,
+    game.reactionPending,
+    storageKey,
+    writeJournal,
+  ]);
 
   useEffect(() => {
     const nextPoster = game.movies[currentIndex + 1]?.posterUrl;
@@ -105,6 +305,40 @@ export function SwipeGame({ game }: { game: GameplayData }) {
     image.src = nextPoster;
     void image.decode().catch(() => undefined);
   }, [currentIndex, game.movies]);
+
+  useEffect(() => {
+    const scrollY = window.scrollY;
+    const html = document.documentElement;
+    const body = document.body;
+    const previous = {
+      bodyOverflow: body.style.overflow,
+      bodyPosition: body.style.position,
+      bodyTop: body.style.top,
+      bodyWidth: body.style.width,
+      htmlOverflow: html.style.overflow,
+      htmlOverscroll: html.style.overscrollBehavior,
+      htmlScrollBehavior: html.style.scrollBehavior,
+    };
+
+    html.style.overflow = "hidden";
+    html.style.overscrollBehavior = "none";
+    body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+
+    return () => {
+      html.style.overflow = previous.htmlOverflow;
+      html.style.overscrollBehavior = previous.htmlOverscroll;
+      body.style.overflow = previous.bodyOverflow;
+      body.style.position = previous.bodyPosition;
+      body.style.top = previous.bodyTop;
+      body.style.width = previous.bodyWidth;
+      html.style.scrollBehavior = "auto";
+      window.scrollTo(0, scrollY);
+      html.style.scrollBehavior = previous.htmlScrollBehavior;
+    };
+  }, []);
 
   useEffect(
     () => () => {
@@ -121,7 +355,8 @@ export function SwipeGame({ game }: { game: GameplayData }) {
       try {
         // The UI reaches the end optimistically. Wait until the final queued
         // answer is committed before checking whether every player finished.
-        await persistenceQueue.current;
+        await flushQueue();
+        if (offlineQueue.current.length) return;
         const status = await ensureGameResultsAction(game.inviteCode);
         if (status === "ready") setResultsReady(true);
         else setResultsState(status);
@@ -132,25 +367,24 @@ export function SwipeGame({ game }: { game: GameplayData }) {
     void check();
     const interval = window.setInterval(() => void check(), 1000);
     return () => window.clearInterval(interval);
-  }, [complete, game.inviteCode, resultsReady]);
+  }, [complete, flushQueue, game.inviteCode, resultsReady]);
 
   function persist(
     movie: GameplayMovie,
     seen: boolean,
     reaction: MovieReaction | null,
   ) {
-    persistenceQueue.current = persistenceQueue.current.then(async () => {
-      const result = await recordAnswerAction({
-        inviteCode: game.inviteCode,
-        reaction,
-        seen,
-        tmdbId: movie.tmdbId,
-      });
-      if (!result.success) {
-        setError(result.error ?? "Your answer didn't save.");
-        router.refresh();
-      }
+    const next = upsertOfflineAnswer(offlineQueue.current, {
+      createdAt: Date.now(),
+      reaction,
+      seen,
+      tmdbId: movie.tmdbId,
     });
+    if (!writeJournal(next)) return;
+    offlineQueue.current = next;
+    setQueuedCount(next.length);
+    setSyncState(navigator.onLine ? "syncing" : "offline");
+    void flushQueue();
   }
 
   function showOccasionalComment(completedCount: number) {
@@ -174,12 +408,14 @@ export function SwipeGame({ game }: { game: GameplayData }) {
 
   function answerUnseen() {
     if (!currentMovie || reactionPending) return;
+    if (!reduceMotion) triggerTactileFeedback(7);
     setDirection(-1);
     advance(currentMovie, false, null);
   }
 
   function answerSeen() {
     if (!currentMovie || reactionPending) return;
+    if (!reduceMotion) triggerTactileFeedback(7);
     setDirection(1);
     persist(currentMovie, true, null);
     setReactionPending(true);
@@ -187,6 +423,7 @@ export function SwipeGame({ game }: { game: GameplayData }) {
 
   function answerReaction(reaction: MovieReaction) {
     if (!currentMovie || !reactionPending) return;
+    if (!reduceMotion) triggerTactileFeedback(9);
     setDirection(1);
     advance(currentMovie, true, reaction);
   }
@@ -235,6 +472,7 @@ export function SwipeGame({ game }: { game: GameplayData }) {
     if (!shouldCommitSwipe(info.offset.x, info.velocity.x)) return;
     if (info.offset.x < 0) answerUnseen();
     else if (selectedReaction && currentMovie) {
+      if (!reduceMotion) triggerTactileFeedback(9);
       setDirection(1);
       advance(currentMovie, true, selectedReaction);
     } else answerSeen();
@@ -250,22 +488,32 @@ export function SwipeGame({ game }: { game: GameplayData }) {
             <span className="text-accent block">your lot.</span>
           </h1>
           <p className="text-muted mt-6 leading-6">
-            {resultsReady
-              ? "The verdict is ready."
-              : resultsState === "processing"
-                ? "Everyone is done. Putting the verdict together."
-                : resultsState === "error"
-                  ? "Still reconnecting. Your answers are safely queued."
-                  : "Your answers are saved. Waiting for everyone else to finish."}
+            {queuedCount > 0
+              ? syncState === "offline"
+                ? `${queuedCount} answer${queuedCount === 1 ? " is" : "s are"} safely queued on this device. Reconnect to finish.`
+                : `Syncing ${queuedCount} remaining answer${queuedCount === 1 ? "" : "s"}.`
+              : resultsReady
+                ? "The verdict is ready."
+                : resultsState === "processing"
+                  ? "Everyone is done. Putting the verdict together."
+                  : resultsState === "error"
+                    ? "Still reconnecting. Your answers are safely queued."
+                    : "Your answers are saved. Waiting for everyone else to finish."}
           </p>
           {!resultsReady ? (
-            <div className="mt-9 flex flex-col items-center" role="status" aria-live="polite">
+            <div
+              className="mt-9 flex flex-col items-center"
+              role="status"
+              aria-live="polite"
+            >
               <motion.div
                 animate={reduceMotion ? undefined : { rotate: 360 }}
                 className="border-muted/30 border-t-accent size-11 rounded-full border-2"
                 transition={{ duration: 0.8, ease: "linear", repeat: Infinity }}
               />
-              <span className="text-label text-muted mt-4">Preparing results</span>
+              <span className="text-label text-muted mt-4">
+                {queuedCount > 0 ? "Saving answers" : "Preparing results"}
+              </span>
             </div>
           ) : (
             <motion.button
@@ -286,7 +534,7 @@ export function SwipeGame({ game }: { game: GameplayData }) {
   const progress = (currentIndex / game.movies.length) * 100;
 
   return (
-    <main className="font-ui bg-background relative min-h-dvh overflow-hidden">
+    <main className="font-ui bg-background relative h-dvh overflow-hidden overscroll-none [touch-action:pan-x_pinch-zoom]">
       <motion.div
         aria-hidden="true"
         className="bg-danger pointer-events-none fixed inset-0"
@@ -306,13 +554,29 @@ export function SwipeGame({ game }: { game: GameplayData }) {
           >
             vidi<span className="text-purple">.</span>
           </Link>
-          <p
-            className="font-display text-xl font-bold tabular-nums"
-            aria-live="polite"
-          >
-            {currentIndex + 1}{" "}
-            <span className="text-muted">/ {game.movies.length}</span>
-          </p>
+          <div className="flex items-center gap-3">
+            <span
+              aria-live="polite"
+              className={cn(
+                "text-label",
+                syncState === "offline"
+                  ? "text-danger"
+                  : syncState === "syncing"
+                    ? "text-accent"
+                    : "text-muted",
+              )}
+            >
+              {syncState === "offline"
+                ? `Offline · ${queuedCount} queued`
+                : syncState === "syncing"
+                  ? `Syncing ${queuedCount}`
+                  : "Saved"}
+            </span>
+            <p className="font-display text-xl font-bold tabular-nums">
+              {currentIndex + 1}{" "}
+              <span className="text-muted">/ {game.movies.length}</span>
+            </p>
+          </div>
         </header>
         <ProgressBar className="mb-4" label="" value={progress} />
 
@@ -381,14 +645,14 @@ export function SwipeGame({ game }: { game: GameplayData }) {
                 transition={{ duration: reduceMotion ? 0 : 0.16 }}
               >
                 <button
-                  className="border-border text-foreground min-h-14 cursor-pointer rounded-md border px-3 text-xs font-bold tracking-[0.05em] uppercase active:scale-[0.98]"
+                  className="font-accent border-border text-foreground min-h-14 cursor-pointer rounded-md border px-3 text-sm tracking-[0.02em] uppercase active:scale-[0.98]"
                   onClick={answerUnseen}
                   type="button"
                 >
                   Haven&apos;t seen
                 </button>
                 <button
-                  className="bg-accent text-background min-h-14 cursor-pointer rounded-md px-3 text-sm font-extrabold tracking-[0.06em] uppercase active:scale-[0.98]"
+                  className="font-accent bg-accent text-background min-h-14 cursor-pointer rounded-md px-3 text-base tracking-[0.02em] uppercase active:scale-[0.98]"
                   onClick={answerSeen}
                   type="button"
                 >
@@ -447,13 +711,13 @@ const ReactionDock = forwardRef<HTMLDivElement, ReactionDockProps>(
         style={pending ? undefined : { opacity: dockOpacity }}
         transition={{ bounce: 0, duration: 0.18, type: "spring" }}
       >
-        {REACTIONS.map((reaction) => {
+        {REACTIONS.map((reaction, index) => {
           const selected = hoveredReaction === reaction.value;
           return (
             <motion.button
               aria-label={reaction.label}
               animate={{
-                opacity: selected ? 1 : pending ? 0.92 : 0.72,
+                opacity: selected ? 1 : pending ? 1 : 0.94,
                 scale: selected ? 1.06 : 1,
                 x: selected ? -8 : 0,
               }}
@@ -461,23 +725,26 @@ const ReactionDock = forwardRef<HTMLDivElement, ReactionDockProps>(
                 "flex min-h-13 cursor-pointer items-center justify-center rounded-l-md border px-3 text-center font-extrabold shadow-lg backdrop-blur-md transition-colors",
                 selected
                   ? "border-accent bg-accent text-background"
-                  : "border-border bg-background/88 text-foreground hover:border-accent",
+                  : "border-muted/70 bg-background/95 text-foreground hover:border-accent",
               )}
               data-reaction={reaction.value}
               key={reaction.value}
               onClick={() => onSelect(reaction.value)}
               tabIndex={pending ? 0 : -1}
-              transition={{ bounce: 0, duration: 0.14, type: "spring" }}
+              transition={{
+                bounce: selected ? 0.12 : 0,
+                delay: pending ? index * 0.025 : 0,
+                duration: 0.18,
+                type: "spring",
+              }}
               type="button"
             >
               {selected ? (
-                <span className="text-[0.65rem] tracking-[0.07em] uppercase">
+                <span className="font-accent text-[0.7rem] tracking-[0.02em] uppercase">
                   {reaction.label}
                 </span>
               ) : (
-                <span aria-hidden="true" className="text-xl leading-none">
-                  {reaction.emoji}
-                </span>
+                <ReactionIcon name={reaction.value} />
               )}
             </motion.button>
           );
@@ -507,35 +774,46 @@ function MovieSwipeCard({
 }: MovieSwipeCardProps) {
   const [posterFailed, setPosterFailed] = useState(false);
   const x = useMotionValue(0);
-  const rotate = useTransform(x, [-220, 0, 220], [-7, 0, 7]);
-  const unseenOpacity = useTransform(x, [-100, -30, 0], [1, 0.2, 0]);
-  const seenOpacity = useTransform(x, [0, 30, 100], [0, 0.2, 1]);
+  const rotate = useTransform(x, [-240, 0, 240], [-9, 0, 9]);
+  const unseenOpacity = useTransform(x, [-104, -28, 0], [1, 0.12, 0]);
+  const seenOpacity = useTransform(x, [0, 28, 104], [0, 0.12, 1]);
+  const unseenWash = useTransform(x, [-180, -32, 0], [0.3, 0.03, 0]);
+  const seenWash = useTransform(x, [0, 32, 180], [0, 0.03, 0.26]);
+  const unseenLabelScale = useTransform(x, [-104, -28, 0], [1, 0.9, 0.88]);
+  const seenLabelScale = useTransform(x, [0, 28, 104], [0.88, 0.9, 1]);
+  const unseenLabelX = useTransform(x, [-104, 0], [0, -8]);
+  const seenLabelX = useTransform(x, [0, 104], [8, 0]);
 
   return (
     <motion.article
-      animate={{ opacity: 1, scale: 1, x: 0 }}
-      className="border-border bg-surface relative z-10 mx-auto w-full touch-pan-y overflow-hidden rounded-sm border shadow-2xl shadow-black/40"
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      className="border-border bg-surface relative z-10 mx-auto w-full touch-none overflow-hidden rounded-sm border shadow-2xl shadow-black/40 will-change-transform"
       custom={direction}
       drag={reactionPending ? false : "x"}
       dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={0.62}
+      dragElastic={0.48}
       dragMomentum={false}
-      exit={{
-        opacity: 0,
-        rotate: direction * 7,
-        scale: 0.97,
-        x: direction * 440,
-      }}
-      initial={{ opacity: 0, scale: 0.985, x: direction * 22 }}
+      dragTransition={{ bounceDamping: 38, bounceStiffness: 620 }}
+      exit={
+        reduceMotion
+          ? { opacity: 0 }
+          : {
+              opacity: 0,
+              rotate: direction * 10,
+              scale: 0.965,
+              x: direction * 520,
+            }
+      }
+      initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.975, y: 10 }}
       onDrag={onDrag}
       onDragEnd={onDragEnd}
       style={{ rotate, x }}
       transition={
         reduceMotion
           ? { duration: 0 }
-          : { duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }
+          : { duration: 0.24, ease: [0.22, 0.78, 0.18, 1] }
       }
-      whileDrag={{ cursor: "grabbing", scale: 0.985 }}
+      whileDrag={{ cursor: "grabbing", scale: 0.99 }}
     >
       <div className="bg-surface-strong relative h-[clamp(16rem,52dvh,34rem)] w-full shrink-0">
         {movie.posterUrl && !posterFailed ? (
@@ -563,15 +841,29 @@ function MovieSwipeCard({
             </div>
           </div>
         )}
+        <motion.div
+          aria-hidden="true"
+          className="bg-danger pointer-events-none absolute inset-0"
+          style={{ opacity: unseenWash }}
+        />
+        <motion.div
+          aria-hidden="true"
+          className="bg-accent pointer-events-none absolute inset-0"
+          style={{ opacity: seenWash }}
+        />
         <motion.span
-          className="bg-background text-foreground absolute top-5 left-5 rounded-sm px-3 py-2 text-xs font-extrabold tracking-[0.08em] uppercase"
-          style={{ opacity: unseenOpacity }}
+          className="font-accent bg-background text-foreground absolute top-5 left-5 rounded-sm px-3 py-2 text-xs tracking-[0.02em] uppercase"
+          style={{
+            opacity: unseenOpacity,
+            scale: unseenLabelScale,
+            x: unseenLabelX,
+          }}
         >
           Haven&apos;t seen
         </motion.span>
         <motion.span
-          className="bg-accent text-background absolute top-5 right-5 rounded-sm px-3 py-2 text-xs font-extrabold tracking-[0.08em] uppercase"
-          style={{ opacity: seenOpacity }}
+          className="font-accent bg-accent text-background absolute top-5 right-5 rounded-sm px-3 py-2 text-sm tracking-[0.02em] uppercase"
+          style={{ opacity: seenOpacity, scale: seenLabelScale, x: seenLabelX }}
         >
           Seen
         </motion.span>

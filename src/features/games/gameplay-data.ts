@@ -22,6 +22,7 @@ export interface GameplayData {
   currentIndex: number;
   inviteCode: string;
   movies: GameplayMovie[];
+  playerId: string;
   reactionPending: boolean;
   status: GameStatus;
 }
@@ -154,6 +155,7 @@ export async function getGameplayData(
         title: movie.title,
         tmdbId: movie.tmdbId,
       })),
+      playerId: player.id,
       status: game.status,
     };
   } catch (error) {

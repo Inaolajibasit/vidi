@@ -46,8 +46,7 @@ export async function ensureGameResultsAction(
       .maybeSingle();
     if (!game) return "error";
     if (game.status === "active") return "waiting";
-    if (!["waiting_results", "completed"].includes(game.status))
-      return "error";
+    if (!["waiting_results", "completed"].includes(game.status)) return "error";
 
     const identity = await getGameIdentity();
     const { data: players } = await admin
@@ -88,14 +87,17 @@ export async function recordAnswerAction(
       .eq("invite_code", parsed.data.inviteCode)
       .maybeSingle();
 
-    if (!game || game.status !== "active") {
+    if (
+      !game ||
+      !["active", "waiting_results", "completed"].includes(game.status)
+    ) {
       return { error: "This game is not active.", success: false };
     }
 
     const identity = await getGameIdentity();
     const { data: players } = await admin
       .from("game_players")
-      .select("id, guest_session_id, profile_id")
+      .select("id, guest_session_id, profile_id, progress, finished_at")
       .eq("game_id", game.id);
     const player = players?.find((candidate) =>
       identityMatchesPlayer(identity, candidate),
@@ -109,6 +111,37 @@ export async function recordAnswerAction(
       .maybeSingle();
     if (!movie) return { error: "Movie not found.", success: false };
 
+    const confirmedResult = async () => {
+      const { data: existing } = await admin
+        .from("ratings")
+        .select("reaction, seen")
+        .eq("game_player_id", player.id)
+        .eq("movie_id", movie.id)
+        .maybeSingle();
+      if (
+        existing &&
+        existing.seen === parsed.data.seen &&
+        existing.reaction === parsed.data.reaction
+      ) {
+        return {
+          complete: Boolean(player.finished_at),
+          progress: player.progress,
+          reactionPending: existing.seen && existing.reaction === null,
+          success: true,
+        } satisfies RecordAnswerResult;
+      }
+      return null;
+    };
+
+    if (game.status !== "active") {
+      return (
+        (await confirmedResult()) ?? {
+          error: "This game is no longer accepting answers.",
+          success: false,
+        }
+      );
+    }
+
     const { data, error } = await admin.rpc("record_game_answer", {
       p_game_id: game.id,
       p_game_player_id: player.id,
@@ -117,7 +150,11 @@ export async function recordAnswerAction(
       p_seen: parsed.data.seen,
     });
 
-    if (error) throw error;
+    if (error) {
+      const confirmed = await confirmedResult();
+      if (confirmed) return confirmed;
+      throw error;
+    }
     const result = z
       .object({
         complete: z.boolean(),
