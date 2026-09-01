@@ -1,0 +1,195 @@
+import "server-only";
+
+import {
+  getGameIdentity,
+  identityMatchesPlayer,
+} from "@/features/games/identity";
+import { inviteCodeSchema } from "@/features/games/validation";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import type { MovieReaction } from "@/types/database";
+
+export interface VerdictMovie {
+  id: string;
+  posterUrl: string | null;
+  saved: boolean;
+  title: string;
+}
+
+export interface VerdictData {
+  disagreement: null | {
+    movie: VerdictMovie;
+    reactions: Array<{ name: string; reaction: MovieReaction }>;
+  };
+  inviteCode: string;
+  isAuthenticated: boolean;
+  moviesRated: number;
+  knowledgeScore: number;
+  knowledgeWinner: string | null;
+  moviesBothSeen: number;
+  overallScore: number;
+  playerNames: string[];
+  sharedFavourites: VerdictMovie[];
+  tasteScore: number;
+  myWatchlist: VerdictMovie[];
+  ourWatchlist: VerdictMovie[];
+}
+
+function personalWatchlistIds(metrics: unknown, playerId: string) {
+  if (!metrics || typeof metrics !== "object" || Array.isArray(metrics))
+    return [];
+  const lists = (metrics as Record<string, unknown>).personalWatchlists;
+  if (!lists || typeof lists !== "object" || Array.isArray(lists)) return [];
+  const ids = (lists as Record<string, unknown>)[playerId];
+  return Array.isArray(ids)
+    ? ids.filter((id): id is string => typeof id === "string")
+    : [];
+}
+
+function posterUrl(path: string | null) {
+  const file = path?.split("/").at(-1);
+  return file ? `/api/posters/${encodeURIComponent(file)}` : null;
+}
+
+export async function getVerdictData(
+  rawCode: string,
+): Promise<VerdictData | null> {
+  const code = inviteCodeSchema.safeParse(rawCode);
+  if (!code.success) return null;
+  const admin = getSupabaseAdmin();
+  const { data: game } = await admin
+    .from("games")
+    .select("id, invite_code, status")
+    .eq("invite_code", code.data)
+    .maybeSingle();
+  if (!game || game.status !== "completed") return null;
+
+  const identity = await getGameIdentity();
+  const { data: players } = await admin
+    .from("game_players")
+    .select("id, display_name, guest_session_id, profile_id, progress")
+    .eq("game_id", game.id)
+    .order("joined_at");
+  const currentPlayer = players?.find((player) =>
+    identityMatchesPlayer(identity, player),
+  );
+  if (!players || !currentPlayer) return null;
+
+  const { data: results } = await admin
+    .from("compatibility_results")
+    .select("*")
+    .eq("game_id", game.id);
+  const pairResults = (results ?? []).filter(
+    (result) => result.subject_player_id,
+  );
+  const groupResult = (results ?? []).find(
+    (result) => !result.subject_player_id,
+  );
+  const displayPair = pairResults.toSorted(
+    (a, b) => b.overall_score - a.overall_score,
+  )[0];
+  const primary =
+    players.length === 2 ? displayPair : (groupResult ?? displayPair);
+  if (!primary) return null;
+  if (!displayPair) return null;
+
+  const ourWatchlistIds =
+    groupResult?.watchlist_movie_ids ?? displayPair.watchlist_movie_ids;
+  const myWatchlistIds = groupResult
+    ? personalWatchlistIds(groupResult.metrics, currentPlayer.id)
+    : [];
+  const resolvedMyWatchlistIds = myWatchlistIds.length
+    ? myWatchlistIds
+    : displayPair.watchlist_movie_ids;
+
+  const disagreementId = pairResults
+    .flatMap((result) => result.disagreement_movie_ids)
+    .sort()[0];
+  const movieIds = [
+    ...new Set([
+      ...displayPair.shared_favourite_movie_ids,
+      ...ourWatchlistIds,
+      ...resolvedMyWatchlistIds,
+      ...(disagreementId ? [disagreementId] : []),
+    ]),
+  ];
+  const { data: movies } = movieIds.length
+    ? await admin
+        .from("movies")
+        .select("id, poster_path, title")
+        .in("id", movieIds)
+    : { data: [] };
+  let savedMovieIds = new Set<string>();
+  if (identity?.profileId) {
+    const { data: lists } = await admin
+      .from("watchlists")
+      .select("id")
+      .eq("profile_id", identity.profileId);
+    const listIds = (lists ?? []).map((list) => list.id);
+    if (listIds.length) {
+      const { data: items } = await admin
+        .from("watchlist_items")
+        .select("movie_id")
+        .in("watchlist_id", listIds);
+      savedMovieIds = new Set((items ?? []).map((item) => item.movie_id));
+    }
+  }
+  const movieMap = new Map(
+    (movies ?? []).map((movie) => [
+      movie.id,
+      {
+        id: movie.id,
+        posterUrl: posterUrl(movie.poster_path),
+        saved: savedMovieIds.has(movie.id),
+        title: movie.title,
+      },
+    ]),
+  );
+  const nameMap = new Map(
+    players.map((player) => [player.id, player.display_name]),
+  );
+  const { data: disagreementRatings } = disagreementId
+    ? await admin
+        .from("ratings")
+        .select("game_player_id, reaction")
+        .eq("game_id", game.id)
+        .eq("movie_id", disagreementId)
+        .not("reaction", "is", null)
+    : { data: [] };
+  const winnerId =
+    groupResult?.knowledge_winner_player_id ??
+    primary.knowledge_winner_player_id;
+
+  return {
+    disagreement:
+      disagreementId && movieMap.has(disagreementId)
+        ? {
+            movie: movieMap.get(disagreementId)!,
+            reactions: (disagreementRatings ?? [])
+              .filter(
+                (
+                  rating,
+                ): rating is typeof rating & { reaction: MovieReaction } =>
+                  Boolean(rating.reaction),
+              )
+              .map((rating) => ({
+                name: nameMap.get(rating.game_player_id) ?? "Player",
+                reaction: rating.reaction,
+              })),
+          }
+        : null,
+    inviteCode: game.invite_code,
+    isAuthenticated: Boolean(identity?.profileId),
+    moviesRated: currentPlayer.progress,
+    knowledgeScore: Number(primary.knowledge_score),
+    knowledgeWinner: winnerId ? (nameMap.get(winnerId) ?? null) : null,
+    moviesBothSeen: primary.shared_seen_count,
+    overallScore: Number(primary.overall_score),
+    playerNames: players.map((player) => player.display_name),
+    sharedFavourites: displayPair.shared_favourite_movie_ids.flatMap(
+      (id) => movieMap.get(id) ?? [],
+    ),
+    tasteScore: Number(primary.taste_score),
+    myWatchlist: resolvedMyWatchlistIds.flatMap((id) => movieMap.get(id) ?? []),
+    ourWatchlist: ourWatchlistIds.flatMap((id) => movieMap.get(id) ?? []),
+  };
+}

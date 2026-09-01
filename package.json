@@ -1,0 +1,46 @@
+{
+  "name": "vidi",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/**/*.test.ts",
+    "movies": "tsx --conditions=react-server scripts/sync-movies.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "@fontsource-variable/roboto-condensed": "^5.3.0",
+    "@supabase/ssr": "latest",
+    "@supabase/supabase-js": "latest",
+    "clsx": "latest",
+    "framer-motion": "latest",
+    "geist": "^1.7.2",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "server-only": "^0.0.1",
+    "tailwind-merge": "latest",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "latest",
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "eslint": "latest",
+    "eslint-config-next": "latest",
+    "prettier": "latest",
+    "prettier-plugin-tailwindcss": "latest",
+    "tailwindcss": "latest",
+    "tsx": "^4.23.12",
+    "typescript": "latest"
+  },
+  "engines": {
+    "node": ">=20.9.0"
+  }
+}

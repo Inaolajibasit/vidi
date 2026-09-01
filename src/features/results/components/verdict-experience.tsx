@@ -1,0 +1,352 @@
+"use client";
+
+import { motion, useReducedMotion } from "framer-motion";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import type {
+  VerdictData,
+  VerdictMovie,
+} from "@/features/results/results-data";
+import {
+  removeWatchlistItemAction,
+  saveWatchlistItemAction,
+} from "@/features/watchlists/actions";
+
+const reactionLabel = {
+  cant_remember: "Can't remember",
+  liked: "Like",
+  loved: "Love",
+  meh: "Meh",
+} as const;
+
+function verdictCopy(score: number) {
+  if (score >= 90) return "suspiciously compatible.";
+  if (score >= 76) return "yeah, you basically share a brain.";
+  if (score >= 58) return "good enough to survive movie night.";
+  if (score >= 38) return "keep the remote somewhere neutral.";
+  return "maybe stick to talking about music.";
+}
+
+function Reveal({
+  children,
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  delay?: number;
+}) {
+  const reduceMotion = useReducedMotion();
+  return (
+    <motion.section
+      initial={reduceMotion ? false : { opacity: 0, y: 24 }}
+      transition={{ bounce: 0, delay, duration: 0.38, type: "spring" }}
+      viewport={{ amount: 0.2, once: true }}
+      whileInView={{ opacity: 1, y: 0 }}
+    >
+      {children}
+    </motion.section>
+  );
+}
+
+function PosterStrip({
+  inviteCode,
+  movies,
+  saveable = false,
+}: {
+  inviteCode?: string;
+  movies: VerdictMovie[];
+  saveable?: boolean;
+}) {
+  if (!movies.length)
+    return <p className="text-muted mt-5">Nothing made the cut.</p>;
+  return (
+    <div className="mt-6 flex gap-3 overflow-x-auto pb-2">
+      {movies.slice(0, 8).map((movie) => (
+        <figure className="w-28 shrink-0" key={movie.id}>
+          <div className="bg-surface-strong aspect-2/3 overflow-hidden rounded-md">
+            {movie.posterUrl ? (
+              <Image
+                alt=""
+                className="h-full w-full object-cover"
+                height={252}
+                src={movie.posterUrl}
+                unoptimized
+                width={168}
+              />
+            ) : null}
+          </div>
+          <figcaption className="mt-2 line-clamp-2 text-xs font-semibold">
+            {movie.title}
+          </figcaption>
+          {saveable && inviteCode ? (
+            <form
+              action={
+                movie.saved
+                  ? removeWatchlistItemAction
+                  : saveWatchlistItemAction
+              }
+            >
+              <input name="inviteCode" type="hidden" value={inviteCode} />
+              <input name="movieId" type="hidden" value={movie.id} />
+              <button
+                className="text-label text-accent mt-2 min-h-8 rounded-sm underline decoration-transparent underline-offset-4 transition hover:decoration-current focus-visible:outline-2 focus-visible:outline-offset-2"
+                type="submit"
+              >
+                {movie.saved ? "Saved · remove" : "+ Save"}
+              </button>
+            </form>
+          ) : null}
+        </figure>
+      ))}
+    </div>
+  );
+}
+
+export function VerdictExperience({ verdict }: { verdict: VerdictData }) {
+  const reduceMotion = useReducedMotion();
+  const target = Math.round(verdict.overallScore);
+  const [displayScore, setDisplayScore] = useState(reduceMotion ? target : 0);
+  const [shareLabel, setShareLabel] = useState("Share results");
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    const started = performance.now();
+    const duration = 700;
+    let frame = 0;
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - started) / duration);
+      setDisplayScore(Math.round(target * (1 - Math.pow(1 - progress, 3))));
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [reduceMotion, target]);
+
+  async function share() {
+    const data = {
+      text: `${target}% movie match on vidi — ${verdictCopy(target)}`,
+      title: "The vidi verdict",
+      url: window.location.href,
+    };
+    try {
+      const canShare = "share" in navigator;
+      if (canShare) await navigator.share(data);
+      else await navigator.clipboard.writeText(`${data.text} ${data.url}`);
+      setShareLabel(canShare ? "Shared" : "Link copied");
+    } catch {
+      setShareLabel("Share results");
+    }
+  }
+
+  return (
+    <main className="bg-background min-h-dvh overflow-x-hidden">
+      <div className="mx-auto w-full max-w-xl px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(3rem,env(safe-area-inset-bottom))] sm:px-8">
+        <header className="flex items-center justify-between">
+          <Link className="text-accent text-xl font-bold" href="/">
+            vidi<span className="text-purple">.</span>
+          </Link>
+          <span className="text-label text-muted">The verdict</span>
+        </header>
+
+        <section className="flex min-h-[82dvh] flex-col justify-center py-16 text-center">
+          <motion.p
+            className="text-label text-purple mb-8"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            The verdict
+          </motion.p>
+          <motion.h1
+            animate={{ opacity: 1, scale: 1 }}
+            className="font-display text-accent text-[clamp(7rem,38vw,13rem)] leading-[0.7] font-black tracking-[-0.08em]"
+            initial={reduceMotion ? false : { opacity: 0, scale: 0.86 }}
+            transition={{ bounce: 0.12, duration: 0.55, type: "spring" }}
+          >
+            {displayScore}
+            <span className="text-[0.28em]">%</span>
+          </motion.h1>
+          <p className="font-display mt-8 text-3xl font-extrabold tracking-[-0.04em] uppercase">
+            Movie match
+          </p>
+          <p className="text-muted mx-auto mt-4 max-w-sm text-lg">
+            {verdictCopy(target)}
+          </p>
+          <p className="text-subtle mt-7 text-xs">
+            {verdict.playerNames.join(" × ")}
+          </p>
+        </section>
+
+        <div className="border-border divide-border divide-y border-y">
+          <Reveal>
+            <div className="grid grid-cols-2 gap-8 py-12">
+              <Metric
+                label="Taste match"
+                value={`${Math.round(verdict.tasteScore)}%`}
+              />
+              <Metric
+                label="Movie knowledge"
+                value={`${Math.round(verdict.knowledgeScore)}%`}
+                tone="purple"
+              />
+            </div>
+          </Reveal>
+          <Reveal>
+            <div className="py-14">
+              <p className="text-label text-muted">Movies both seen</p>
+              <p className="font-display text-accent mt-4 text-8xl font-black tracking-[-0.06em]">
+                {verdict.moviesBothSeen}
+              </p>
+            </div>
+          </Reveal>
+          <Reveal>
+            <div className="py-14">
+              <h2 className="font-display text-4xl font-extrabold uppercase">
+                Shared favourites
+              </h2>
+              <PosterStrip movies={verdict.sharedFavourites} />
+            </div>
+          </Reveal>
+          <Reveal>
+            <div className="py-14">
+              <p className="text-label text-purple">Biggest disagreement</p>
+              {verdict.disagreement ? (
+                <>
+                  <h2 className="font-display mt-5 text-5xl leading-[0.86] font-black tracking-[-0.05em] uppercase">
+                    {verdict.disagreement.movie.title}
+                  </h2>
+                  <div className="mt-8 grid grid-cols-2 gap-4">
+                    {verdict.disagreement.reactions.slice(0, 2).map((item) => (
+                      <div key={item.name}>
+                        <p className="text-muted text-sm">{item.name}</p>
+                        <p className="font-display mt-1 text-3xl font-bold uppercase">
+                          {reactionLabel[item.reaction]}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-muted mt-8 italic">
+                    “this conversation is between you two.”
+                  </p>
+                </>
+              ) : (
+                <p className="text-muted mt-5">
+                  No dramatic disagreements. Slightly disappointing.
+                </p>
+              )}
+            </div>
+          </Reveal>
+          <Reveal>
+            <div className="py-14">
+              <p className="text-label text-muted">Who knows movies?</p>
+              <h2 className="font-display text-accent mt-5 text-6xl leading-[0.85] font-black uppercase">
+                {verdict.knowledgeWinner ?? "It's a tie"}
+              </h2>
+            </div>
+          </Reveal>
+          <Reveal>
+            <div className="py-14">
+              <p className="text-label text-purple">Picked for you</p>
+              <h2 className="font-display mt-3 text-4xl font-extrabold uppercase">
+                My watchlist
+              </h2>
+              <p className="text-muted mt-3 max-w-sm text-sm leading-relaxed">
+                Movies your friends rate highly that you have not marked as
+                seen.
+              </p>
+              <PosterStrip
+                inviteCode={verdict.inviteCode}
+                movies={verdict.myWatchlist}
+                saveable={verdict.isAuthenticated}
+              />
+              {!verdict.isAuthenticated ? (
+                <p className="border-purple/40 text-muted mt-7 border-l-2 pl-4 text-sm leading-relaxed">
+                  Playing as a guest. Create an account to save these
+                  permanently.
+                </p>
+              ) : null}
+            </div>
+          </Reveal>
+          <Reveal>
+            <div className="py-14">
+              <p className="text-label text-muted">The group assignment</p>
+              <h2 className="font-display mt-3 text-4xl font-extrabold uppercase">
+                Our watchlist
+              </h2>
+              <p className="text-muted mt-3 max-w-sm text-sm leading-relaxed">
+                The strongest recommendations across everyone in this game.
+              </p>
+              <PosterStrip
+                inviteCode={verdict.inviteCode}
+                movies={verdict.ourWatchlist}
+                saveable={verdict.isAuthenticated}
+              />
+            </div>
+          </Reveal>
+        </div>
+
+        {!verdict.isAuthenticated ? (
+          <Reveal>
+            <section className="border-purple/40 mt-14 border-y py-12 text-center">
+              <p className="text-label text-purple">Keep the evidence</p>
+              <h2 className="font-display mt-4 text-5xl font-black uppercase">
+                Save your movie profile
+              </h2>
+              <p className="text-muted mt-5">
+                You&apos;ve already rated {verdict.moviesRated} movies.
+              </p>
+              <Link
+                className="bg-accent text-background mt-8 inline-flex min-h-14 items-center rounded-md px-7 text-sm font-extrabold uppercase"
+                href={`/auth?next=${encodeURIComponent(`/results/${verdict.inviteCode}`)}`}
+              >
+                Create account
+              </Link>
+            </section>
+          </Reveal>
+        ) : null}
+
+        <Reveal>
+          <div className="grid gap-3 pt-16">
+            <Link
+              className="bg-accent text-background flex min-h-14 items-center justify-center rounded-md text-sm font-extrabold uppercase"
+              href="/games/new"
+            >
+              Challenge someone
+            </Link>
+            <Button fullWidth onClick={share} size="lg" variant="purple">
+              {shareLabel}
+            </Button>
+            <Link
+              className="border-border flex min-h-14 items-center justify-center rounded-md border text-sm font-bold uppercase"
+              href="/games/new"
+            >
+              Play again
+            </Link>
+          </div>
+        </Reveal>
+      </div>
+    </main>
+  );
+}
+
+function Metric({
+  label,
+  tone,
+  value,
+}: {
+  label: string;
+  tone?: "purple";
+  value: string;
+}) {
+  return (
+    <div>
+      <p className="text-label text-muted">{label}</p>
+      <p
+        className={`font-display mt-4 text-5xl font-black tracking-[-0.05em] ${tone ? "text-purple" : "text-accent"}`}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
