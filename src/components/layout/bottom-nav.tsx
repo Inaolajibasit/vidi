@@ -21,7 +21,7 @@ export function BottomNav({ activeHref, className, items }: BottomNavProps) {
     <nav
       aria-label="Primary navigation"
       className={cn(
-        "border-border fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-50 mx-auto max-w-md rounded-xl border bg-[var(--surface-overlay)] p-1.5 shadow-2xl shadow-black/30 backdrop-blur-xl",
+        "border-foreground/20 fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-50 mx-auto max-w-md rounded-md border bg-[var(--surface-overlay)] p-1.5 shadow-2xl shadow-black/40 backdrop-blur-xl",
         className,
       )}
     >
@@ -35,9 +35,9 @@ export function BottomNav({ activeHref, className, items }: BottomNavProps) {
                 aria-label={item.emphasis ? item.label : undefined}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "tap-target text-label flex flex-col items-center justify-center gap-1 rounded-lg px-2 py-2 transition-[color,background-color,transform] duration-(--duration-fast) active:scale-95",
+                  "tap-target text-label flex flex-col items-center justify-center gap-1 rounded-sm px-2 py-2 transition-[color,background-color,transform] duration-150 active:scale-95",
                   item.emphasis
-                    ? "bg-accent text-background hover:bg-accent-strong mx-auto size-12 rounded-full p-0 shadow-[0_0_0_4px_var(--surface-canvas)]"
+                    ? "bg-accent text-background hover:bg-accent-strong mx-auto size-12 rounded-sm p-0 shadow-[4px_4px_0_#2227F7]"
                     : active
                       ? "bg-accent text-background"
                       : "text-muted hover:bg-foreground/5 hover:text-foreground",

@@ -11,7 +11,7 @@ const variants: Record<ButtonVariant, string> = {
   outline:
     "border-border bg-transparent text-foreground hover:border-foreground/35 hover:bg-surface",
   ghost: "bg-transparent text-foreground hover:bg-surface",
-  purple: "bg-purple text-background hover:brightness-110",
+  purple: "bg-purple text-foreground hover:brightness-110",
 };
 
 const sizes: Record<ButtonSize, string> = {
@@ -43,7 +43,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "tap-target inline-flex cursor-pointer items-center justify-center gap-2 rounded-md font-bold tracking-[0.04em] uppercase transition-[color,background-color,border-color,transform,opacity] duration-(--duration-fast) ease-(--ease-out) active:scale-[0.975] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40",
+        "tap-target inline-flex cursor-pointer items-center justify-center gap-2 rounded-sm font-extrabold tracking-[0.07em] uppercase transition-[color,background-color,border-color,transform,opacity,box-shadow] duration-150 ease-out hover:shadow-[4px_4px_0_#2227F7] active:scale-[0.965] active:shadow-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none",
         variants[variant],
         sizes[size],
         fullWidth && "w-full",

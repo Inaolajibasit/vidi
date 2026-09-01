@@ -26,7 +26,7 @@ export function Input({
         aria-describedby={descriptionId}
         aria-invalid={Boolean(error)}
         className={cn(
-          "border-border bg-surface text-foreground placeholder:text-subtle focus:border-accent focus:ring-accent/15 h-(--input-height) w-full rounded-md border px-4 text-base transition-[border-color,box-shadow] duration-(--duration-fast) outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-40",
+          "border-border bg-background/80 text-foreground placeholder:text-subtle focus:border-accent focus:ring-accent/15 h-(--input-height) w-full rounded-sm border px-4 text-base transition-[border-color,box-shadow] duration-(--duration-fast) outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-40",
           error && "border-danger focus:border-danger focus:ring-danger/15",
           className,
         )}

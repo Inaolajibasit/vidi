@@ -19,7 +19,7 @@ export default async function JoinPage({ searchParams }: JoinPageProps) {
   if (parsed?.success) redirect(`/join/${parsed.data}`);
 
   return (
-    <main className="bg-background min-h-dvh">
+    <main className="editorial-screen font-ui bg-background min-h-dvh">
       <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-8 sm:px-8">
         <header className="flex items-center justify-between">
           <Link
@@ -29,14 +29,14 @@ export default async function JoinPage({ searchParams }: JoinPageProps) {
           >
             <Icon name="arrow-left" size={22} />
           </Link>
-          <span className="text-accent text-lg font-bold tracking-[-0.04em]">
+          <span className="font-accent text-accent text-2xl tracking-[-0.05em]">
             vidi<span className="text-purple">.</span>
           </span>
         </header>
 
         <section className="flex flex-1 flex-col justify-center py-10">
           <p className="text-label text-purple mb-4">Got a code?</p>
-          <h1 className="font-display text-[clamp(4rem,20vw,6.5rem)] leading-[0.79] font-extrabold tracking-[-0.06em] uppercase">
+          <h1 className="font-display text-[clamp(4rem,20vw,6.5rem)] leading-[0.79] font-normal tracking-[-0.04em] uppercase">
             Join the
             <span className="text-accent block">vidi.</span>
           </h1>

@@ -220,7 +220,7 @@ export function LobbyExperience({ lobby }: { lobby: LobbyData }) {
               {lobby.players.map((player, index) => (
                 <motion.li
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  className="border-border bg-surface flex min-h-16 items-center gap-3 rounded-md border px-4"
+                  className="border-border bg-background/70 flex min-h-16 items-center gap-3 rounded-sm border px-4 backdrop-blur-sm"
                   initial={{ opacity: 0, scale: 0.97, y: 8 }}
                   key={`${player.displayName}-${index}`}
                   layout
@@ -240,7 +240,7 @@ export function LobbyExperience({ lobby }: { lobby: LobbyData }) {
               ))}
               {Array.from({ length: waitingSlots }, (_, index) => (
                 <motion.li
-                  className="border-border text-muted flex min-h-16 items-center gap-3 rounded-md border border-dashed px-4"
+                  className="border-border text-muted flex min-h-16 items-center gap-3 rounded-sm border border-dashed px-4"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   key={`waiting-${index}`}
@@ -321,7 +321,7 @@ function LobbyShell({
   inviteCode: string;
 }) {
   return (
-    <main className="bg-background min-h-dvh">
+    <main className="editorial-screen font-ui bg-background min-h-dvh">
       <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] sm:px-8">
         <header className="flex items-center justify-between">
           <Link
@@ -333,7 +333,7 @@ function LobbyShell({
           </Link>
           <Link
             aria-label={`vidi lobby ${inviteCode}`}
-            className="text-accent text-lg font-bold tracking-[-0.04em]"
+            className="font-accent text-accent text-2xl tracking-[-0.05em]"
             href="/"
           >
             vidi<span className="text-purple">.</span>

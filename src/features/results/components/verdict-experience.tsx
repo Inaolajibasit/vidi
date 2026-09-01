@@ -65,7 +65,7 @@ function PosterStrip({
     <div className="mt-6 flex gap-3 overflow-x-auto pb-2">
       {movies.slice(0, 8).map((movie) => (
         <figure className="w-28 shrink-0" key={movie.id}>
-          <div className="bg-surface-strong aspect-2/3 overflow-hidden rounded-md">
+          <div className="bg-surface-strong aspect-2/3 overflow-hidden rounded-sm">
             {movie.posterUrl ? (
               <Image
                 alt=""
@@ -141,10 +141,10 @@ export function VerdictExperience({ verdict }: { verdict: VerdictData }) {
   }
 
   return (
-    <main className="bg-background min-h-dvh overflow-x-hidden">
+    <main className="editorial-screen font-ui bg-background min-h-dvh overflow-x-hidden">
       <div className="mx-auto w-full max-w-xl px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(3rem,env(safe-area-inset-bottom))] sm:px-8">
         <header className="flex items-center justify-between">
-          <Link className="text-accent text-xl font-bold" href="/">
+          <Link className="font-accent text-accent text-2xl" href="/">
             vidi<span className="text-purple">.</span>
           </Link>
           <span className="text-label text-muted">The verdict</span>

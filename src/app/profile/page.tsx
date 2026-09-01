@@ -59,9 +59,9 @@ export default async function ProfilePage() {
     : { data: [] };
 
   return (
-    <main className="page-container min-h-dvh max-w-xl py-10">
+    <main className="editorial-screen font-ui page-container min-h-dvh max-w-xl py-10">
       <header className="flex justify-between">
-        <Link className="text-accent text-xl font-bold" href="/">
+        <Link className="font-accent text-accent text-2xl" href="/">
           vidi.
         </Link>
         <form action={signOutAction}>
@@ -69,7 +69,7 @@ export default async function ProfilePage() {
         </form>
       </header>
       <section className="py-14">
-        <div className="bg-purple text-background grid size-20 place-items-center rounded-full text-3xl font-black">
+        <div className="bg-purple text-foreground grid size-20 place-items-center rounded-sm text-3xl font-black shadow-[5px_5px_0_#FFD628]">
           {profile.display_name[0]?.toUpperCase()}
         </div>
         <h1 className="font-display mt-6 text-6xl font-black uppercase">

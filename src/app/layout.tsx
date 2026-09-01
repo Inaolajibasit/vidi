@@ -2,6 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 
 import "@fontsource-variable/roboto-condensed";
+import "@fontsource-variable/montserrat";
+import "@fontsource/erica-one";
+import "@fontsource/fascinate";
 import "./globals.css";
 
 export const metadata: Metadata = {

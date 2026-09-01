@@ -4,7 +4,7 @@ import { Icon } from "@/components/ui/icon";
 
 export default function NotFound() {
   return (
-    <main className="bg-background relative grid min-h-dvh overflow-hidden px-5 py-[max(1.5rem,env(safe-area-inset-top))] sm:px-8">
+    <main className="editorial-screen font-ui bg-background relative grid min-h-dvh overflow-hidden px-5 py-[max(1.5rem,env(safe-area-inset-top))] sm:px-8">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-y-0 left-[max(1rem,calc(50%-15rem))] border-l border-white/[0.035]"
@@ -18,7 +18,7 @@ export default function NotFound() {
         <header>
           <Link
             aria-label="vidi home"
-            className="text-accent inline-flex min-h-11 items-center text-lg font-bold tracking-[-0.04em]"
+            className="font-accent text-accent inline-flex min-h-11 items-center text-2xl tracking-[-0.04em]"
             href="/"
           >
             vidi<span className="text-purple">.</span>

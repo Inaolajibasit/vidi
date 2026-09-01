@@ -242,7 +242,7 @@ export function SwipeGame({ game }: { game: GameplayData }) {
 
   if (complete || !currentMovie) {
     return (
-      <main className="page-container grid min-h-dvh max-w-lg place-items-center py-12 text-center">
+      <main className="editorial-screen font-ui page-container grid min-h-dvh max-w-lg place-items-center py-12 text-center">
         <div>
           <p className="text-label text-purple mb-5">Deck complete</p>
           <h1 className="text-display-lg">
@@ -286,7 +286,7 @@ export function SwipeGame({ game }: { game: GameplayData }) {
   const progress = (currentIndex / game.movies.length) * 100;
 
   return (
-    <main className="bg-background relative min-h-dvh overflow-hidden">
+    <main className="font-ui bg-background relative min-h-dvh overflow-hidden">
       <motion.div
         aria-hidden="true"
         className="bg-danger pointer-events-none fixed inset-0"
@@ -301,7 +301,7 @@ export function SwipeGame({ game }: { game: GameplayData }) {
         <header className="mb-3 flex items-center justify-between">
           <Link
             aria-label="vidi home"
-            className="text-accent tap-target flex items-center text-xl font-bold tracking-[-0.05em]"
+            className="font-accent text-accent tap-target flex items-center text-2xl tracking-[-0.05em]"
             href="/"
           >
             vidi<span className="text-purple">.</span>
@@ -514,7 +514,7 @@ function MovieSwipeCard({
   return (
     <motion.article
       animate={{ opacity: 1, scale: 1, x: 0 }}
-      className="border-border bg-surface relative z-10 mx-auto w-full touch-pan-y overflow-hidden rounded-xl border shadow-2xl shadow-black/40"
+      className="border-border bg-surface relative z-10 mx-auto w-full touch-pan-y overflow-hidden rounded-sm border shadow-2xl shadow-black/40"
       custom={direction}
       drag={reactionPending ? false : "x"}
       dragConstraints={{ left: 0, right: 0 }}

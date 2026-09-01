@@ -27,7 +27,7 @@ export function Avatar({ className, name, size = "md", src }: AvatarProps) {
     <span
       aria-label={name}
       className={cn(
-        "border-background bg-purple-soft text-purple relative inline-grid shrink-0 place-items-center overflow-hidden rounded-full border-2 font-bold tracking-[0.04em]",
+        "border-purple bg-purple text-foreground relative inline-grid shrink-0 place-items-center overflow-hidden rounded-sm border font-extrabold tracking-[0.04em]",
         sizes[size],
         className,
       )}

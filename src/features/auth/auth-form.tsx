@@ -68,10 +68,16 @@ export function AuthForm({ next = "/profile" }: { next?: string }) {
   return (
     <div className="grid gap-4">
       <button
-        className="border-border min-h-14 rounded-md border font-bold"
+        className="border-foreground/50 hover:bg-foreground hover:text-background flex min-h-14 items-center justify-center gap-3 rounded-sm border font-extrabold uppercase transition-[color,background-color,transform] duration-150 active:scale-[0.97]"
         disabled={busy}
         onClick={google}
       >
+        <svg aria-hidden="true" className="size-5 shrink-0" viewBox="0 0 24 24">
+          <path d="M21.8 12.2c0-.7-.1-1.4-.2-2H12v3.9h5.5a4.7 4.7 0 0 1-2 3.1v2.6h3.3c1.9-1.8 3-4.4 3-7.6Z" fill="#4285F4" />
+          <path d="M12 22c2.7 0 5-.9 6.8-2.4L15.5 17a6.2 6.2 0 0 1-9.3-3.3H2.8v2.7A10.3 10.3 0 0 0 12 22Z" fill="#34A853" />
+          <path d="M6.2 13.7a6.2 6.2 0 0 1 0-3.9V7.1H2.8a10.2 10.2 0 0 0 0 9.3l3.4-2.7Z" fill="#FBBC05" />
+          <path d="M12 5.8c1.6 0 3 .5 4.1 1.6l3.1-3.1A10.2 10.2 0 0 0 2.8 7.1l3.4 2.7A6.1 6.1 0 0 1 12 5.8Z" fill="#EA4335" />
+        </svg>
         Continue with Google
       </button>
       <div className="text-muted flex items-center gap-3 text-xs">
@@ -86,7 +92,7 @@ export function AuthForm({ next = "/profile" }: { next?: string }) {
         {sent ? (
           <input
             autoComplete="one-time-code"
-            className="border-border bg-surface min-h-14 rounded-md border px-4 text-center text-xl tracking-[.35em]"
+            className="border-border bg-background/80 focus:border-accent min-h-14 rounded-sm border px-4 text-center text-xl tracking-[.35em] outline-none"
             inputMode="numeric"
             maxLength={6}
             id="otp"
@@ -96,7 +102,7 @@ export function AuthForm({ next = "/profile" }: { next?: string }) {
         ) : (
           <input
             autoComplete="email"
-            className="border-border bg-surface min-h-14 rounded-md border px-4"
+            className="border-border bg-background/80 focus:border-accent min-h-14 rounded-sm border px-4 outline-none"
             id="email"
             type="email"
             value={email}
@@ -104,7 +110,7 @@ export function AuthForm({ next = "/profile" }: { next?: string }) {
           />
         )}
         <button
-          className="bg-accent text-background min-h-14 rounded-md font-extrabold uppercase"
+          className="bg-accent text-background min-h-14 rounded-sm font-extrabold uppercase transition-[transform,box-shadow] duration-150 hover:shadow-[4px_4px_0_#2227F7] active:scale-[0.97] active:shadow-none"
           disabled={busy}
         >
           {busy

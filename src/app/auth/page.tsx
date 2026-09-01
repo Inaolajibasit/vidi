@@ -8,8 +8,8 @@ export default async function AuthPage({
   const raw = (await searchParams).next;
   const next = raw?.startsWith("/") ? raw : "/profile";
   return (
-    <main className="page-container min-h-dvh max-w-md py-10">
-      <Link className="text-accent text-xl font-bold" href="/">
+    <main className="editorial-screen font-ui page-container min-h-dvh max-w-md py-10">
+      <Link className="font-accent text-accent text-2xl" href="/">
         vidi.
       </Link>
       <section className="py-16">

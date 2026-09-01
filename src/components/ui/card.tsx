@@ -16,7 +16,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-lg border",
+        "rounded-sm border",
         variant === "default" && "border-border bg-surface",
         variant === "strong" && "border-border bg-surface-strong",
         variant === "outline" && "border-border bg-transparent",

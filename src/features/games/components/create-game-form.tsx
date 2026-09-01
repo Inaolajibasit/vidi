@@ -102,7 +102,9 @@ export function CreateGameForm({
         <div className="mb-4 flex items-end justify-between gap-4">
           <legend className="text-label text-muted">Movie genres</legend>
           <span className="text-muted text-xs">
-            {selectedGenres.length ? `${selectedGenres.length}/6 selected` : "Surprise me"}
+            {selectedGenres.length
+              ? `${selectedGenres.length}/6 selected`
+              : "Surprise me"}
           </span>
         </div>
         <p className="text-muted mb-5 text-sm leading-5">
@@ -117,7 +119,7 @@ export function CreateGameForm({
                 className={cn(
                   "tap-target inline-flex cursor-pointer items-center rounded-full border px-4 text-xs font-bold tracking-[0.04em] transition-colors",
                   selected
-                    ? "border-purple bg-purple text-background"
+                    ? "border-purple bg-purple text-foreground"
                     : "border-border bg-surface text-muted hover:text-foreground",
                   disabled && "cursor-not-allowed opacity-35",
                 )}
@@ -144,7 +146,9 @@ export function CreateGameForm({
           })}
         </div>
         {state.fieldErrors?.genreIds ? (
-          <p className="text-danger mt-3 text-sm">{state.fieldErrors.genreIds}</p>
+          <p className="text-danger mt-3 text-sm">
+            {state.fieldErrors.genreIds}
+          </p>
         ) : null}
       </fieldset>
 

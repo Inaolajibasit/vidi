@@ -14,17 +14,22 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
+    "@fontsource-variable/montserrat": "^5.3.0",
     "@fontsource-variable/roboto-condensed": "^5.3.0",
+    "@fontsource/erica-one": "^5.3.0",
+    "@fontsource/fascinate": "^5.3.0",
     "@supabase/ssr": "latest",
     "@supabase/supabase-js": "latest",
     "clsx": "latest",
     "framer-motion": "latest",
     "geist": "^1.7.2",
     "next": "latest",
+    "postprocessing": "^6.39.4",
     "react": "latest",
     "react-dom": "latest",
     "server-only": "^0.0.1",
     "tailwind-merge": "latest",
+    "three": "^0.185.1",
     "zod": "latest"
   },
   "devDependencies": {
@@ -32,6 +37,7 @@
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "@types/three": "^0.185.4",
     "eslint": "latest",
     "eslint-config-next": "latest",
     "prettier": "latest",
