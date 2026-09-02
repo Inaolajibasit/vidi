@@ -202,6 +202,24 @@ export function VerdictExperience({ verdict }: { verdict: VerdictData }) {
           </Reveal>
           <Reveal>
             <div className="py-14">
+              <p className="text-label text-purple">Your movie personality</p>
+              <h2 className="font-display text-accent mt-5 text-5xl leading-[0.86] font-black tracking-[-0.05em] uppercase">
+                {verdict.personality.displayName}
+              </h2>
+              <p className="text-foreground mt-5 max-w-md text-lg leading-relaxed">
+                {verdict.personality.description}
+              </p>
+              <ul className="text-muted mt-7 space-y-2 text-sm leading-relaxed">
+                {verdict.personality.reasons.map((reason) => (
+                  <li className="border-border border-l-2 pl-4" key={reason}>
+                    {reason}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Reveal>
+          <Reveal>
+            <div className="py-14">
               <h2 className="font-display text-4xl font-extrabold uppercase">
                 Shared favourites
               </h2>

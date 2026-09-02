@@ -6,6 +6,7 @@ import {
   type ResultPlayer,
 } from "@/lib/algorithms/compatibility";
 import { generateWatchlists } from "@/lib/algorithms/watchlists";
+import { assignMoviePersonality } from "@/lib/algorithms/personality";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { CompatibilityResultInsert } from "@/types/database";
 
@@ -15,7 +16,7 @@ export async function calculateAndStoreResults(gameId: string) {
     { data: players, error: playerError },
     { data: ratings, error: ratingError },
   ] = await Promise.all([
-    admin.from("game_players").select("id").eq("game_id", gameId),
+    admin.from("game_players").select("id, profile_id").eq("game_id", gameId),
     admin
       .from("ratings")
       .select("game_player_id, movie_id, reaction, seen")
@@ -39,11 +40,11 @@ export async function calculateAndStoreResults(gameId: string) {
       .in("movie_id", movieIds),
     admin
       .from("movie_keywords")
-      .select("movie_id, tmdb_keyword_id")
+      .select("movie_id, name, tmdb_keyword_id")
       .in("movie_id", movieIds),
     admin
       .from("movies")
-      .select("id, popularity, vote_average")
+      .select("id, popularity, release_year, vote_average")
       .in("id", movieIds),
   ]);
   if (genreError) throw genreError;
@@ -77,6 +78,38 @@ export async function calculateAndStoreResults(gameId: string) {
     ...attributesByMovie.values(),
   ]);
   const movieMetadata = new Map((movies ?? []).map((movie) => [movie.id, movie]));
+  const keywordNamesByMovie = new Map<string, string[]>();
+  (keywords ?? []).forEach((keyword) => {
+    const names = keywordNamesByMovie.get(keyword.movie_id) ?? [];
+    names.push(keyword.name);
+    keywordNamesByMovie.set(keyword.movie_id, names);
+  });
+  const personalityMovies = [...attributesByMovie.values()].map((movie) => ({
+    genreIds: movie.genreIds,
+    keywordNames: keywordNamesByMovie.get(movie.movieId) ?? [],
+    movieId: movie.movieId,
+    popularity: Number(movieMetadata.get(movie.movieId)?.popularity ?? 0),
+    releaseYear: movieMetadata.get(movie.movieId)?.release_year ?? null,
+  }));
+  const personalityResults = new Map(
+    resultPlayers.map((player) => [
+      player.id,
+      assignMoviePersonality(player.ratings, personalityMovies),
+    ]),
+  );
+  const personalitySummaries = Object.fromEntries(
+    [...personalityResults].map(([playerId, personality]) => [
+      playerId,
+      {
+        description: personality.description,
+        displayName: personality.displayName,
+        evidence: { ...personality.evidence },
+        id: personality.id,
+        reasons: personality.reasons,
+        score: personality.score,
+      },
+    ]),
+  );
   const watchlists = generateWatchlists(
     resultPlayers,
     [...attributesByMovie.values()].map((movie) => ({
@@ -113,6 +146,7 @@ export async function calculateAndStoreResults(gameId: string) {
       highestPair: result.highestCompatibilityPair.playerIds,
       lowestPair: result.lowestCompatibilityPair.playerIds,
       pairCount: result.pairs.length,
+      personalities: personalitySummaries,
       personalWatchlists: Object.fromEntries(
         Object.entries(watchlists.personal).map(([playerId, items]) => [
           playerId,
@@ -147,4 +181,25 @@ export async function calculateAndStoreResults(gameId: string) {
     .eq("id", gameId)
     .eq("status", "waiting_results");
   if (completeError) throw completeError;
+
+  // Profile enrichment must never hold the completed game's verdict hostage.
+  // A failed write is reported for observability and can be repaired later.
+  const profileUpdates = players.flatMap((player) => {
+    const personality = personalityResults.get(player.id);
+    if (!player.profile_id || !personality?.id) return [];
+    return [
+      admin
+        .from("profiles")
+        .update({ current_personality: personality.id })
+        .eq("id", player.profile_id)
+        .then(({ error }) => {
+          if (error) throw error;
+        }),
+    ];
+  });
+  const profileUpdateResults = await Promise.allSettled(profileUpdates);
+  profileUpdateResults.forEach((update) => {
+    if (update.status === "rejected")
+      console.error("Movie personality profile update failed", update.reason);
+  });
 }

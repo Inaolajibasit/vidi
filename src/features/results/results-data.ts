@@ -27,11 +27,56 @@ export interface VerdictData {
   knowledgeWinner: string | null;
   moviesBothSeen: number;
   overallScore: number;
+  personality: {
+    description: string;
+    displayName: string;
+    reasons: string[];
+    score: number;
+  };
   playerNames: string[];
   sharedFavourites: VerdictMovie[];
   tasteScore: number;
   myWatchlist: VerdictMovie[];
   ourWatchlist: VerdictMovie[];
+}
+
+function playerPersonality(metrics: unknown, playerId: string) {
+  const fallback = {
+    description: "Rate a few more films and vidi will make the call.",
+    displayName: "STILL FIGURING YOU OUT",
+    reasons: ["There is not enough evidence yet."],
+    score: 0,
+  };
+  if (!metrics || typeof metrics !== "object" || Array.isArray(metrics))
+    return fallback;
+  const personalities = (metrics as Record<string, unknown>).personalities;
+  if (
+    !personalities ||
+    typeof personalities !== "object" ||
+    Array.isArray(personalities)
+  )
+    return fallback;
+  const value = (personalities as Record<string, unknown>)[playerId];
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    return fallback;
+  const personality = value as Record<string, unknown>;
+  return {
+    description:
+      typeof personality.description === "string"
+        ? personality.description
+        : fallback.description,
+    displayName:
+      typeof personality.displayName === "string"
+        ? personality.displayName
+        : fallback.displayName,
+    reasons: Array.isArray(personality.reasons)
+      ? personality.reasons.filter(
+          (reason): reason is string => typeof reason === "string",
+        )
+      : fallback.reasons,
+    score:
+      typeof personality.score === "number" ? personality.score : fallback.score,
+  };
 }
 
 function personalWatchlistIds(metrics: unknown, playerId: string) {
@@ -184,6 +229,7 @@ export async function getVerdictData(
     knowledgeWinner: winnerId ? (nameMap.get(winnerId) ?? null) : null,
     moviesBothSeen: primary.shared_seen_count,
     overallScore: Number(primary.overall_score),
+    personality: playerPersonality(groupResult?.metrics, currentPlayer.id),
     playerNames: players.map((player) => player.display_name),
     sharedFavourites: displayPair.shared_favourite_movie_ids.flatMap(
       (id) => movieMap.get(id) ?? [],

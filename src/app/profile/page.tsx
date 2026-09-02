@@ -101,6 +101,15 @@ export default async function ProfilePage() {
             "Play more to find out"}
         </p>
       </section>
+      <Link
+        className="border-border group flex min-h-16 items-center justify-between border-b py-4 font-bold"
+        href="/friends"
+      >
+        <span>Friends</span>
+        <span className="text-accent transition-transform group-hover:translate-x-1">
+          →
+        </span>
+      </Link>
       <section className="py-10">
         <h2 className="font-display text-3xl font-bold uppercase">
           Edit profile

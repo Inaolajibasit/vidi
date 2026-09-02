@@ -3,11 +3,39 @@ import Link from "next/link";
 import { Icon } from "@/components/ui/icon";
 import { CreateGameForm } from "@/features/games/components/create-game-form";
 import { getCreateGameIdentity } from "@/features/games/create-game-data";
+import { getFriendshipWith } from "@/features/friends/data";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { z } from "zod";
 
 export const metadata = { title: "Create game" };
 
-export default async function CreateGamePage() {
+export default async function CreateGamePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ with?: string }>;
+}) {
   const identity = await getCreateGameIdentity();
+  const requestedFriend = z
+    .string()
+    .regex(/^[A-Za-z0-9_]{3,24}$/)
+    .safeParse((await searchParams).with);
+  let friend: {
+    display_name: string;
+    id: string;
+    username: string | null;
+  } | null = null;
+  if (requestedFriend.success) {
+    const admin = getSupabaseAdmin();
+    const { data } = await admin
+      .from("profiles")
+      .select("id, username, display_name")
+      .eq("username", requestedFriend.data)
+      .maybeSingle();
+    if (data) {
+      const relationship = await getFriendshipWith(data.id);
+      if (relationship.relationship?.status === "accepted") friend = data;
+    }
+  }
 
   return (
     <main className="editorial-screen font-ui bg-background min-h-dvh">
@@ -32,6 +60,16 @@ export default async function CreateGamePage() {
             <span className="text-accent block">vidi.</span>
           </h1>
         </section>
+
+        {friend ? (
+          <aside className="border-purple bg-purple/10 mb-10 border-l-2 px-5 py-4">
+            <p className="text-label text-purple">Playing with</p>
+            <p className="mt-2 font-bold">{friend.display_name}</p>
+            <p className="text-muted mt-1 text-sm">
+              Build the game, then send them the lobby link.
+            </p>
+          </aside>
+        ) : null}
 
         <CreateGameForm {...identity} />
       </div>

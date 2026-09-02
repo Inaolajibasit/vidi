@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
+import {
+  AddFriendForm,
+  FriendshipAction,
+} from "@/features/friends/components/friend-actions";
+import { getFriendshipWith } from "@/features/friends/data";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export default async function PublicProfilePage({
@@ -22,6 +27,7 @@ export default async function PublicProfilePage({
     .eq("username", parsed.data)
     .maybeSingle();
   if (!profile) notFound();
+  const friendship = await getFriendshipWith(profile.id);
   const { count } = await admin
     .from("game_players")
     .select("id", { count: "exact", head: true })
@@ -54,6 +60,47 @@ export default async function PublicProfilePage({
           {profile.current_personality?.replaceAll("_", " ") ??
             "Still developing"}
         </h2>
+        {friendship.userId !== profile.id ? (
+          <div className="border-border mt-10 border-t pt-8">
+            {!friendship.authenticated ? (
+              <Link
+                className="bg-accent text-background inline-flex min-h-12 items-center rounded-sm px-5 text-xs font-extrabold uppercase"
+                href={`/auth?next=${encodeURIComponent(`/profile/${profile.username}`)}`}
+              >
+                Sign in to add friend
+              </Link>
+            ) : friendship.relationship?.status === "accepted" ? (
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  className="bg-accent text-background inline-flex min-h-12 items-center rounded-sm px-5 text-xs font-extrabold uppercase"
+                  href={`/games/new?with=${encodeURIComponent(profile.username ?? "")}`}
+                >
+                  Start game
+                </Link>
+                <FriendshipAction
+                  friendshipId={friendship.relationship.id}
+                  kind="remove"
+                />
+              </div>
+            ) : friendship.relationship?.status === "pending" &&
+              friendship.relationship.addressee_id === friendship.userId ? (
+              <div className="flex flex-wrap gap-3">
+                <FriendshipAction
+                  friendshipId={friendship.relationship.id}
+                  kind="accept"
+                />
+                <FriendshipAction
+                  friendshipId={friendship.relationship.id}
+                  kind="decline"
+                />
+              </div>
+            ) : friendship.relationship?.status === "pending" ? (
+              <p className="text-label text-muted">Friend request pending</p>
+            ) : friendship.relationship?.status === "blocked" ? null : (
+              <AddFriendForm defaultUsername={profile.username ?? ""} />
+            )}
+          </div>
+        ) : null}
       </section>
     </main>
   );
