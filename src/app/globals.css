@@ -193,6 +193,55 @@ a {
     font-family: var(--font-ui);
   }
 
+  .legal-copy {
+    color: var(--text-muted);
+    font-size: 0.9375rem;
+    line-height: 1.8;
+  }
+
+  .legal-copy > :first-child {
+    color: var(--text-primary);
+    font-size: 1.0625rem;
+  }
+
+  .legal-copy h2 {
+    color: var(--text-primary);
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 7vw, 2.5rem);
+    line-height: 1;
+    margin-top: 3.5rem;
+    text-transform: uppercase;
+  }
+
+  .legal-copy h3 {
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    margin-top: 2rem;
+    text-transform: uppercase;
+  }
+
+  .legal-copy p,
+  .legal-copy ul {
+    margin-top: 1rem;
+  }
+
+  .legal-copy ul {
+    list-style: square;
+    padding-left: 1.25rem;
+  }
+
+  .legal-copy li + li {
+    margin-top: 0.625rem;
+  }
+
+  .legal-copy a {
+    color: var(--action-primary);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
   .text-display-xl {
     font-family: var(--font-display);
     font-size: clamp(3.5rem, 16vw, 8rem);

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { claimGuestHistory } from "@/features/auth/actions";
+import { claimGuestHistoryForUser } from "@/features/auth/claim-guest-history";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
@@ -10,11 +11,12 @@ export async function GET(request: Request) {
   const client = await createSupabaseServerClient();
   if (!client || !code)
     return NextResponse.redirect(new URL("/auth?error=invalid_callback", url));
-  const { error } = await client.auth.exchangeCodeForSession(code);
-  if (error)
+  const { data, error } = await client.auth.exchangeCodeForSession(code);
+  if (error || !data.user)
     return NextResponse.redirect(
       new URL("/auth?error=verification_failed", url),
     );
-  await claimGuestHistory();
+
+  await claimGuestHistoryForUser(data.user.id);
   return NextResponse.redirect(new URL(next, url));
 }

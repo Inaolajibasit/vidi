@@ -50,12 +50,16 @@ function ActionLink({
         "tap-target group flex h-15 w-full items-center justify-between rounded-sm border px-5 text-xs font-extrabold tracking-[0.09em] uppercase shadow-[0_0_0_0_transparent] transition-[color,background-color,border-color,transform,box-shadow] duration-150 ease-out active:scale-[0.965]",
         primary
           ? "border-accent bg-accent text-background hover:bg-accent-strong hover:shadow-[5px_5px_0_#2227F7]"
-          : "border-foreground/55 bg-background/70 text-foreground backdrop-blur-sm hover:border-foreground hover:bg-foreground hover:text-background",
+          : "border-foreground/55 bg-background/70 text-foreground hover:border-foreground hover:bg-foreground hover:text-background backdrop-blur-sm",
       )}
       href={href}
     >
       <span>{children}</span>
-      <Icon className="transition-transform duration-150 group-hover:translate-x-1" name="chevron-right" size={18} />
+      <Icon
+        className="transition-transform duration-150 group-hover:translate-x-1"
+        name="chevron-right"
+        size={18}
+      />
     </Link>
   );
 }
@@ -83,7 +87,9 @@ function RecentGameCard({ game }: { game: RecentGame }) {
       </div>
       <div className="flex items-center justify-between py-2">
         <div>
-          <p className="font-editorial text-foreground text-2xl uppercase">{modeLabels[game.mode]}</p>
+          <p className="font-editorial text-foreground text-2xl uppercase">
+            {modeLabels[game.mode]}
+          </p>
           <p className="text-muted mt-1 text-sm">
             {game.progress} of {movieCount} movies
           </p>
@@ -111,13 +117,13 @@ export function HomeExperience({
   return (
     <main
       className={cn(
-        "font-ui bg-background relative min-h-dvh overflow-hidden [--accent-personality:#2227F7] [--accent-personality-soft:#111469] [--action-primary:#FFD628] [--action-primary-hover:#ffe05c] [--focus-ring:#FFD628]",
+        "font-ui bg-background relative min-h-dvh overflow-hidden [--accent-personality-soft:#111469] [--accent-personality:#2227F7] [--action-primary-hover:#ffe05c] [--action-primary:#FFD628] [--focus-ring:#FFD628]",
         authenticated && "pb-24",
       )}
     >
       <div
         aria-hidden="true"
-        className="absolute inset-0 opacity-45 [mask-image:linear-gradient(to_bottom,black_0%,black_72%,transparent_100%)]"
+        className="absolute inset-0 [mask-image:linear-gradient(to_bottom,black_0%,black_72%,transparent_100%)] opacity-45"
       >
         <PixelBlast
           antialias={false}
@@ -136,7 +142,10 @@ export function HomeExperience({
           variant="square"
         />
       </div>
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,#090909_0%,transparent_45%,#090909_100%)] opacity-80" />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,#090909_0%,transparent_45%,#090909_100%)] opacity-80"
+      />
 
       <div className="relative mx-auto flex min-h-dvh w-full max-w-[38rem] flex-col px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-8 sm:px-8 md:justify-center md:py-14">
         <motion.header
@@ -152,7 +161,9 @@ export function HomeExperience({
           >
             vidi<span className="text-foreground">.</span>
           </Link>
-          <span className="text-label text-foreground/60">seen it? prove it.</span>
+          <span className="text-label text-foreground/60">
+            seen it? prove it.
+          </span>
         </motion.header>
 
         <div className="flex flex-1 flex-col justify-center pt-12 pb-7 md:flex-none md:pt-20 md:pb-0">
@@ -203,6 +214,20 @@ export function HomeExperience({
             </motion.div>
           ) : null}
         </div>
+        <footer className="text-muted relative flex justify-center gap-5 pb-2 text-[0.65rem] font-semibold tracking-[0.04em] uppercase">
+          <Link
+            className="hover:text-foreground min-h-8 content-center"
+            href="/privacy"
+          >
+            Privacy
+          </Link>
+          <Link
+            className="hover:text-foreground min-h-8 content-center"
+            href="/terms"
+          >
+            Terms
+          </Link>
+        </footer>
       </div>
 
       {authenticated ? <BottomNav activeHref="/" items={navigation} /> : null}

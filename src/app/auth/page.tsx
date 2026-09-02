@@ -25,6 +25,23 @@ export default async function AuthPage({
         <div className="mt-10">
           <AuthForm next={next} />
         </div>
+        <p className="text-muted mt-7 text-center text-xs leading-5">
+          By continuing, you agree to the{" "}
+          <Link
+            className="text-foreground underline underline-offset-4"
+            href="/terms"
+          >
+            Terms
+          </Link>{" "}
+          and acknowledge the{" "}
+          <Link
+            className="text-foreground underline underline-offset-4"
+            href="/privacy"
+          >
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </section>
     </main>
   );
