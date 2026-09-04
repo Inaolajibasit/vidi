@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 
+import { completeChallengeAttempt } from "@/features/challenges/complete-attempt";
 import {
   getGameIdentity,
   identityMatchesPlayer,
@@ -55,6 +56,12 @@ export async function ensureGameResultsAction(
       .eq("game_id", game.id);
     if (!players?.some((player) => identityMatchesPlayer(identity, player)))
       return "error";
+
+    try {
+      await completeChallengeAttempt(game.id);
+    } catch (error) {
+      console.error("Challenge completion recovery failed", error);
+    }
 
     if (game.status === "waiting_results") {
       await calculateAndStoreResults(game.id);
@@ -162,6 +169,16 @@ export async function recordAnswerAction(
         reaction_pending: z.boolean(),
       })
       .parse(data);
+
+    if (result.complete) {
+      try {
+        await completeChallengeAttempt(game.id);
+      } catch (error) {
+        // Analytics must never make a successfully persisted answer appear to
+        // fail. The null completed_at row remains safe to repair later.
+        console.error("Challenge completion tracking failed", error);
+      }
+    }
 
     return {
       complete: result.complete,

@@ -11,6 +11,53 @@ export type GameStatus =
   "waiting" | "active" | "waiting_results" | "completed" | "expired";
 export type MovieReaction = "loved" | "liked" | "meh" | "cant_remember";
 export type WatchlistKind = "personal" | "shared";
+export type ChallengeEventType =
+  | "challenge_created"
+  | "challenge_opened"
+  | "challenge_started"
+  | "challenge_completed";
+
+export interface ChallengeRow {
+  active: boolean;
+  code: string;
+  created_at: string;
+  creator_profile_id: string;
+  id: string;
+  source_game_id: string;
+  source_player_id: string;
+}
+
+export type ChallengeInsert = Pick<
+  ChallengeRow,
+  "code" | "creator_profile_id" | "source_game_id" | "source_player_id"
+> &
+  Partial<Omit<ChallengeRow, "code" | "creator_profile_id" | "source_game_id" | "source_player_id">>;
+
+export interface ChallengeAttemptRow {
+  challenge_id: string;
+  completed_at: string | null;
+  game_id: string;
+  id: string;
+  participant_guest_session_id: string | null;
+  participant_profile_id: string | null;
+  started_at: string;
+}
+
+export type ChallengeAttemptInsert = Pick<ChallengeAttemptRow, "challenge_id" | "game_id"> &
+  Partial<Omit<ChallengeAttemptRow, "challenge_id" | "game_id">>;
+
+export interface ChallengeEventRow {
+  attempt_id: string | null;
+  challenge_id: string;
+  created_at: string;
+  event_type: ChallengeEventType;
+  guest_session_id: string | null;
+  id: number;
+  profile_id: string | null;
+}
+
+export type ChallengeEventInsert = Pick<ChallengeEventRow, "challenge_id" | "event_type"> &
+  Partial<Omit<ChallengeEventRow, "challenge_id" | "event_type">>;
 export type FriendshipStatus = "pending" | "accepted" | "blocked";
 
 type TableDefinition<Row, Insert = Partial<Row>, Update = Partial<Insert>> = {
@@ -261,6 +308,9 @@ export type CompatibilityResultInsert = Pick<
 export interface Database {
   public: {
     Tables: {
+      challenge_attempts: TableDefinition<ChallengeAttemptRow, ChallengeAttemptInsert>;
+      challenge_events: TableDefinition<ChallengeEventRow, ChallengeEventInsert>;
+      challenges: TableDefinition<ChallengeRow, ChallengeInsert>;
       compatibility_results: TableDefinition<
         CompatibilityResultRow,
         CompatibilityResultInsert
@@ -293,6 +343,16 @@ export interface Database {
           p_max_players: number;
           p_mode: GameMode;
           p_movie_ids: string[];
+          p_profile_id: string | null;
+        };
+        Returns: string;
+      };
+      start_challenge_attempt: {
+        Args: {
+          p_challenge_id: string;
+          p_display_name: string;
+          p_game_invite_code: string;
+          p_guest_session_id: string | null;
           p_profile_id: string | null;
         };
         Returns: string;

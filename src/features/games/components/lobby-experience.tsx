@@ -226,7 +226,10 @@ export function LobbyExperience({ lobby }: { lobby: LobbyData }) {
                   layout
                   transition={{ bounce: 0, duration: 0.3, type: "spring" }}
                 >
-                  <Avatar name={player.displayName} />
+                  <Avatar
+                    name={player.displayName}
+                    src={player.avatarUrl ?? undefined}
+                  />
                   <span className="text-sm font-semibold">
                     {player.displayName}
                     {index === 0 ? (

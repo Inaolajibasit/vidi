@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AccountMenu } from "@/components/layout/account-menu";
+import { AvatarGroup } from "@/components/ui/avatar-group";
 import { Icon } from "@/components/ui/icon";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -27,6 +28,11 @@ function gameHref(game: { invite_code: string; status: keyof typeof statusLabels
   }
   if (game.status === "active") return `/play/${game.invite_code}`;
   return `/join/${game.invite_code}`;
+}
+
+function participantLabel(names: readonly string[]) {
+  if (names.length <= 3) return names.join(" × ");
+  return `${names.slice(0, 2).join(" × ")} +${names.length - 2}`;
 }
 
 export default async function GamesPage() {
@@ -58,6 +64,44 @@ export default async function GamesPage() {
         .in("id", gameIds)
         .order("created_at", { ascending: false })
     : { data: [] };
+  const { data: gamePlayers } = gameIds.length
+    ? await client
+        .from("game_players")
+        .select("display_name, game_id, profile_id")
+        .in("game_id", gameIds)
+        .order("joined_at", { ascending: true })
+    : { data: [] };
+  const participantProfileIds = [
+    ...new Set(
+      (gamePlayers ?? [])
+        .map((player) => player.profile_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  const { data: participantProfiles } = participantProfileIds.length
+    ? await client
+        .from("profiles")
+        .select("avatar_url, id")
+        .in("id", participantProfileIds)
+    : { data: [] };
+  const avatarByProfile = new Map(
+    (participantProfiles ?? []).map((item) => [item.id, item.avatar_url]),
+  );
+  const participantsByGame = new Map<
+    string,
+    Array<{ avatarUrl: string | null; displayName: string }>
+  >();
+  for (const player of gamePlayers ?? []) {
+    participantsByGame.set(player.game_id, [
+      ...(participantsByGame.get(player.game_id) ?? []),
+      {
+        avatarUrl: player.profile_id
+          ? (avatarByProfile.get(player.profile_id) ?? null)
+          : null,
+        displayName: player.display_name,
+      },
+    ]);
+  }
   const progressByGame = new Map(
     (players ?? []).map((player) => [player.game_id, player.progress]),
   );
@@ -104,26 +148,12 @@ export default async function GamesPage() {
         {games?.length ? (
           <div className="border-foreground/20 border-t">
             {games.map((game) => (
-              <Link
-                className="group border-foreground/20 flex min-h-24 items-center justify-between gap-4 border-b py-5"
-                href={gameHref(game)}
+              <GameHistoryItem
+                game={game}
                 key={game.id}
-              >
-                <div>
-                  <p className="font-editorial text-2xl uppercase">
-                    {modeLabels[game.mode]}
-                  </p>
-                  <p className="text-muted mt-1 text-xs">
-                    {statusLabels[game.status]} · {progressByGame.get(game.id) ?? 0}{" "}
-                    rated
-                  </p>
-                </div>
-                <Icon
-                  className="text-accent transition-transform group-hover:translate-x-1"
-                  name="chevron-right"
-                  size={20}
-                />
-              </Link>
+                participants={participantsByGame.get(game.id) ?? []}
+                progress={progressByGame.get(game.id) ?? 0}
+              />
             ))}
           </div>
         ) : (
@@ -142,5 +172,50 @@ export default async function GamesPage() {
         )}
       </div>
     </main>
+  );
+}
+
+function GameHistoryItem({
+  game,
+  participants,
+  progress,
+}: {
+  game: {
+    invite_code: string;
+    mode: keyof typeof modeLabels;
+    status: keyof typeof statusLabels;
+  };
+  participants: Array<{ avatarUrl: string | null; displayName: string }>;
+  progress: number;
+}) {
+  const names = participants.map((player) => player.displayName);
+  return (
+    <Link
+      className="group border-foreground/20 grid min-h-28 grid-cols-[auto_1fr_auto] items-center gap-4 border-b py-5"
+      href={gameHref(game)}
+    >
+      <AvatarGroup
+        avatars={participants.map((player) => ({
+          name: player.displayName,
+          src: player.avatarUrl ?? undefined,
+        }))}
+        max={3}
+        size="sm"
+      />
+      <div className="min-w-0">
+        <p className="truncate text-sm font-extrabold">
+          {participantLabel(names) || "Waiting for players"}
+        </p>
+        <p className="text-muted mt-1 text-xs">
+          {modeLabels[game.mode]} · {statusLabels[game.status]} · {progress}{" "}
+          rated
+        </p>
+      </div>
+      <Icon
+        className="text-accent transition-transform group-hover:translate-x-1"
+        name="chevron-right"
+        size={20}
+      />
+    </Link>
   );
 }

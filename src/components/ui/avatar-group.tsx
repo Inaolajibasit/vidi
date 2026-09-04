@@ -23,8 +23,8 @@ export function AvatarGroup({
       className={cn("flex -space-x-2", className)}
       role="group"
     >
-      {visible.map((avatar) => (
-        <Avatar {...avatar} key={avatar.name} size={size} />
+      {visible.map((avatar, index) => (
+        <Avatar {...avatar} key={`${avatar.name}-${index}`} size={size} />
       ))}
       {remaining > 0 && (
         <span className="border-background bg-surface-strong text-muted relative inline-grid size-11 place-items-center rounded-full border-2 text-xs font-bold">

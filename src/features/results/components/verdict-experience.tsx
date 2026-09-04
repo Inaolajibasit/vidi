@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { createChallengeAction } from "@/features/challenges/actions";
 import type {
   VerdictData,
   VerdictMovie,
@@ -337,12 +338,28 @@ export function VerdictExperience({ verdict }: { verdict: VerdictData }) {
 
         <Reveal>
           <div className="grid gap-3 pt-16">
-            <Link
-              className="bg-accent text-background flex min-h-14 items-center justify-center rounded-md text-sm font-extrabold uppercase"
-              href="/games/new"
-            >
-              Challenge someone
-            </Link>
+            {verdict.isAuthenticated ? (
+              <form action={createChallengeAction}>
+                <input
+                  name="inviteCode"
+                  type="hidden"
+                  value={verdict.inviteCode}
+                />
+                <button
+                  className="bg-accent text-background min-h-14 w-full rounded-md text-sm font-extrabold uppercase"
+                  type="submit"
+                >
+                  Challenge someone
+                </button>
+              </form>
+            ) : (
+              <Link
+                className="bg-accent text-background flex min-h-14 items-center justify-center rounded-md text-sm font-extrabold uppercase"
+                href={`/auth?next=${encodeURIComponent(`/results/${verdict.inviteCode}`)}`}
+              >
+                Sign up to challenge
+              </Link>
+            )}
             <Button fullWidth onClick={share} size="lg" variant="purple">
               {shareLabel}
             </Button>

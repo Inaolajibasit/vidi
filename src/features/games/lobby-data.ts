@@ -16,6 +16,7 @@ export interface LobbyData {
   maxPlayers: number;
   mode: GameMode;
   players: Array<{
+    avatarUrl: string | null;
     displayName: string;
     isCurrent: boolean;
   }>;
@@ -47,6 +48,24 @@ export async function getLobbyData(
 
     if (error) throw error;
 
+    const profileIds = [
+      ...new Set(
+        (players ?? [])
+          .map((player) => player.profile_id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    const { data: profiles, error: profileError } = profileIds.length
+      ? await admin
+          .from("profiles")
+          .select("avatar_url, id")
+          .in("id", profileIds)
+      : { data: [], error: null };
+    if (profileError) throw profileError;
+    const avatarByProfile = new Map(
+      (profiles ?? []).map((profile) => [profile.id, profile.avatar_url]),
+    );
+
     const identity = await getGameIdentity();
     const hostPlayer = players?.[0];
     const isHost = hostPlayer
@@ -64,6 +83,9 @@ export async function getLobbyData(
       maxPlayers: game.max_players,
       mode: game.mode,
       players: (players ?? []).map((player) => ({
+        avatarUrl: player.profile_id
+          ? (avatarByProfile.get(player.profile_id) ?? null)
+          : null,
         displayName: player.display_name,
         isCurrent: identityMatchesPlayer(identity, player),
       })),
