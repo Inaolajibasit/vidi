@@ -36,6 +36,9 @@ export function formatPlayerNames(names: string[]) {
   return names
     .map((name) => name.trim())
     .filter(Boolean)
+    .map((name) =>
+      name.length > 18 ? `${name.slice(0, 17).trimEnd()}…` : name,
+    )
     .map((name) => name.toLocaleUpperCase("en"))
     .join("  ×  ");
 }

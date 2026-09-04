@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +31,25 @@ function ShareIcon() {
   );
 }
 
+function CloseIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="22"
+      viewBox="0 0 24 24"
+      width="22"
+    >
+      <path
+        d="m6 6 12 12M18 6 6 18"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
+
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
@@ -45,10 +64,31 @@ function downloadBlob(blob: Blob, filename: string) {
 type ShareStatus = "downloaded" | "error" | "idle" | "loading" | "shared";
 
 export function ShareResultCard({ inviteCode }: { inviteCode: string }) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const [format, setFormat] = useState<ShareCardFormat>(
     DEFAULT_SHARE_CARD_FORMAT,
   );
+  const [isOpen, setIsOpen] = useState(false);
   const [status, setStatus] = useState<ShareStatus>("idle");
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
+
+  function openDialog() {
+    setStatus("idle");
+    setIsOpen(true);
+    if (!dialogRef.current?.open) dialogRef.current?.showModal();
+  }
+
+  function closeDialog() {
+    dialogRef.current?.close();
+  }
 
   async function shareResult() {
     setStatus("loading");
@@ -87,77 +127,130 @@ export function ShareResultCard({ inviteCode }: { inviteCode: string }) {
   const buttonLabel: Record<ShareStatus, string> = {
     downloaded: "Image downloaded",
     error: "Try sharing again",
-    idle: "Share result card",
+    idle: "Share this result",
     loading: "Making your card…",
     shared: "Shared",
   };
 
   return (
-    <section
-      className="border-border border-y py-6"
-      aria-labelledby="share-card-title"
-    >
-      <div className="flex items-end justify-between gap-5">
-        <div>
-          <p className="text-label text-purple">Share the evidence</p>
-          <h2
-            className="font-display mt-2 text-3xl font-black uppercase"
-            id="share-card-title"
-          >
-            Pick a format
-          </h2>
-        </div>
-        <span className="text-muted max-w-28 text-right text-xs leading-snug">
-          9:16 works best for Stories
-        </span>
-      </div>
-
-      <div
-        className="mt-5 grid grid-cols-3 gap-2"
-        role="group"
-        aria-label="Result image format"
-      >
-        {(
-          Object.entries(SHARE_CARD_FORMATS) as Array<
-            [ShareCardFormat, (typeof SHARE_CARD_FORMATS)[ShareCardFormat]]
-          >
-        ).map(([value, option]) => (
-          <button
-            aria-pressed={format === value}
-            className={cn(
-              "min-h-12 rounded-sm border px-2 text-[0.68rem] font-extrabold tracking-[0.05em] uppercase transition duration-150 active:scale-[0.97]",
-              format === value
-                ? "border-accent bg-accent text-background"
-                : "border-border text-muted hover:border-foreground/40 hover:text-foreground",
-            )}
-            key={value}
-            onClick={() => {
-              setFormat(value);
-              setStatus("idle");
-            }}
-            type="button"
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-
+    <>
       <Button
-        className="mt-3"
-        disabled={status === "loading"}
         fullWidth
         leadingIcon={<ShareIcon />}
-        onClick={shareResult}
+        onClick={openDialog}
         size="lg"
         variant="purple"
       >
-        {buttonLabel[status]}
+        Share results
       </Button>
-      <p className="text-muted mt-3 text-center text-xs" aria-live="polite">
-        {status === "error"
-          ? "The card could not be generated. Check your connection and try again."
-          : "If image sharing is unavailable, the PNG downloads automatically."}
-      </p>
-    </section>
+
+      <dialog
+        aria-labelledby="share-dialog-title"
+        className="border-border bg-surface text-foreground fixed inset-x-0 bottom-0 m-0 max-h-[92dvh] w-full max-w-none overflow-y-auto rounded-t-xl border p-0 backdrop:bg-black/85 backdrop:backdrop-blur-sm sm:inset-0 sm:m-auto sm:max-w-md sm:rounded-xl"
+        onCancel={() => setIsOpen(false)}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) closeDialog();
+        }}
+        onClose={() => setIsOpen(false)}
+        ref={dialogRef}
+      >
+        <div className="relative overflow-hidden px-5 pt-7 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-7 sm:py-7">
+          <div
+            aria-hidden="true"
+            className="bg-purple absolute -top-14 -right-14 size-36 rounded-full"
+          />
+          <div
+            aria-hidden="true"
+            className="border-accent absolute top-20 -right-5 size-20 rotate-12 border-[10px]"
+          />
+
+          <div className="relative flex items-start justify-between gap-5">
+            <div>
+              <p className="text-label text-accent">Share the evidence</p>
+              <h2
+                className="font-display mt-3 text-4xl leading-[0.86] uppercase"
+                id="share-dialog-title"
+              >
+                Pick your
+                <br />
+                format.
+              </h2>
+            </div>
+            <button
+              aria-label="Close share options"
+              className="border-border bg-background/80 relative grid size-11 shrink-0 place-items-center rounded-full border transition active:scale-95"
+              onClick={closeDialog}
+              type="button"
+            >
+              <CloseIcon />
+            </button>
+          </div>
+
+          <div
+            className="relative mt-8 grid grid-cols-3 gap-3"
+            role="group"
+            aria-label="Result image format"
+          >
+            {(
+              Object.entries(SHARE_CARD_FORMATS) as Array<
+                [ShareCardFormat, (typeof SHARE_CARD_FORMATS)[ShareCardFormat]]
+              >
+            ).map(([value, option]) => (
+              <button
+                aria-pressed={format === value}
+                className={cn(
+                  "group flex min-h-36 flex-col items-center justify-end gap-3 rounded-md border p-3 transition duration-150 active:scale-[0.97]",
+                  format === value
+                    ? "border-accent bg-accent/8 text-foreground"
+                    : "border-border text-muted hover:border-foreground/35",
+                )}
+                key={value}
+                onClick={() => {
+                  setFormat(value);
+                  setStatus("idle");
+                }}
+                type="button"
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "relative block max-h-20 max-w-14 overflow-hidden border transition",
+                    format === value
+                      ? "border-accent bg-accent"
+                      : "border-muted bg-background",
+                  )}
+                  style={{ aspectRatio: option.aspectRatio, height: "5rem" }}
+                >
+                  <span className="bg-purple absolute right-0 bottom-0 h-1/2 w-2/3" />
+                  <span className="bg-background absolute top-2 left-2 block size-2 rounded-full" />
+                </span>
+                <span className="text-center text-[0.65rem] font-extrabold tracking-[0.04em] uppercase">
+                  {option.label}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <Button
+            className="relative mt-4"
+            disabled={status === "loading"}
+            fullWidth
+            leadingIcon={<ShareIcon />}
+            onClick={shareResult}
+            size="lg"
+          >
+            {buttonLabel[status]}
+          </Button>
+          <p
+            className="text-muted relative mt-3 text-center text-xs leading-relaxed"
+            aria-live="polite"
+          >
+            {status === "error"
+              ? "The card could not be generated. Check your connection and try again."
+              : "We’ll open your device share menu. If unavailable, the PNG downloads instead."}
+          </p>
+        </div>
+      </dialog>
+    </>
   );
 }

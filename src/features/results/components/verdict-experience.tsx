@@ -349,6 +349,12 @@ export function VerdictExperience({
             >
               Play again
             </Link>
+            <Link
+              className="text-muted hover:text-foreground flex min-h-12 items-center justify-center text-sm font-bold uppercase transition-colors"
+              href="/"
+            >
+              Home
+            </Link>
           </div>
         </Reveal>
       </div>

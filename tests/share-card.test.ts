@@ -32,4 +32,8 @@ test("story is the safe default for absent or invalid formats", () => {
 test("share metadata is normalized consistently", () => {
   assert.equal(formatPlayerNames([" Basit ", "Sarah"]), "BASIT  ×  SARAH");
   assert.equal(shareCardFilename("A1B2C3", "story"), "vidi-a1b2c3-story.png");
+  assert.equal(
+    formatPlayerNames(["An exceptionally long player name"]),
+    "AN EXCEPTIONALLY…",
+  );
 });
