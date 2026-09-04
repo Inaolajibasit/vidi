@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { signOutAction } from "@/features/auth/actions";
+import { AccountMenu } from "@/components/layout/account-menu";
 import { updateProfileAction } from "@/features/profiles/actions";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -64,9 +64,10 @@ export default async function ProfilePage() {
         <Link className="font-accent text-accent text-2xl" href="/">
           vidi.
         </Link>
-        <form action={signOutAction}>
-          <button className="text-muted min-h-11 text-sm">Sign out</button>
-        </form>
+        <AccountMenu
+          avatarUrl={profile.avatar_url}
+          displayName={profile.display_name}
+        />
       </header>
       <section className="py-14">
         <div className="bg-purple text-foreground grid size-20 place-items-center rounded-sm text-3xl font-black shadow-[5px_5px_0_#FFD628]">

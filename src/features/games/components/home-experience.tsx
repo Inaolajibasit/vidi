@@ -3,7 +3,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 
-import { BottomNav, type BottomNavItem } from "@/components/layout/bottom-nav";
+import { AccountMenu } from "@/components/layout/account-menu";
 import { Icon } from "@/components/ui/icon";
 import PixelBlast from "@/components/ui/PixelBlast";
 import { cn } from "@/lib/utils";
@@ -11,15 +11,9 @@ import type { RecentGame } from "@/features/games/home-data";
 
 interface HomeExperienceProps {
   authenticated: boolean;
+  profile: { avatarUrl: string | null; displayName: string } | null;
   recentGame: RecentGame | null;
 }
-
-const navigation: BottomNavItem[] = [
-  { href: "/", icon: "home", label: "Home" },
-  { href: "/games", icon: "game", label: "Games" },
-  { emphasis: true, href: "/games/new", icon: "plus", label: "Create game" },
-  { href: "/profile", icon: "profile", label: "Profile" },
-];
 
 const modeLabels = {
   no_life: "No Life",
@@ -108,6 +102,7 @@ function RecentGameCard({ game }: { game: RecentGame }) {
 
 export function HomeExperience({
   authenticated,
+  profile,
   recentGame,
 }: HomeExperienceProps) {
   const reduceMotion = useReducedMotion();
@@ -116,10 +111,7 @@ export function HomeExperience({
 
   return (
     <main
-      className={cn(
-        "font-ui bg-background relative min-h-dvh overflow-hidden [--accent-personality-soft:#111469] [--accent-personality:#2227F7] [--action-primary-hover:#ffe05c] [--action-primary:#FFD628] [--focus-ring:#FFD628]",
-        authenticated && "pb-24",
-      )}
+      className="font-ui bg-background relative min-h-dvh overflow-hidden [--accent-personality-soft:#111469] [--accent-personality:#2227F7] [--action-primary-hover:#ffe05c] [--action-primary:#FFD628] [--focus-ring:#FFD628]"
     >
       <div
         aria-hidden="true"
@@ -161,9 +153,16 @@ export function HomeExperience({
           >
             vidi<span className="text-foreground">.</span>
           </Link>
-          <span className="text-label text-foreground/60">
-            seen it? prove it.
-          </span>
+          {authenticated && profile ? (
+            <AccountMenu
+              avatarUrl={profile.avatarUrl}
+              displayName={profile.displayName}
+            />
+          ) : (
+            <span className="text-label text-foreground/60">
+              seen it? prove it.
+            </span>
+          )}
         </motion.header>
 
         <div className="flex flex-1 flex-col justify-center pt-12 pb-7 md:flex-none md:pt-20 md:pb-0">
@@ -229,8 +228,6 @@ export function HomeExperience({
           </Link>
         </footer>
       </div>
-
-      {authenticated ? <BottomNav activeHref="/" items={navigation} /> : null}
     </main>
   );
 }

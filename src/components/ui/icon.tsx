@@ -10,6 +10,7 @@ export type IconName =
   | "copy"
   | "game"
   | "home"
+  | "logout"
   | "plus"
   | "profile"
   | "search"
@@ -43,6 +44,13 @@ const paths: Record<IconName, React.ReactNode> = {
     <>
       <path d="m3 11 9-8 9 8" />
       <path d="M5 10v10h14V10M9 20v-6h6v6" />
+    </>
+  ),
+  logout: (
+    <>
+      <path d="M10 17l5-5-5-5" />
+      <path d="M15 12H3" />
+      <path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5" />
     </>
   ),
   plus: (
