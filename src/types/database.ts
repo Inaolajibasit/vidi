@@ -373,6 +373,14 @@ export interface Database {
           vote_count: number;
         }>;
       };
+      get_monthly_recap_source: {
+        Args: {
+          p_month_end: string;
+          p_month_start: string;
+          p_profile_id: string;
+        };
+        Returns: Json;
+      };
       record_game_answer: {
         Args: {
           p_game_id: string;
