@@ -9,8 +9,9 @@ import { Icon, type IconName } from "@/components/ui/icon";
 import { signOutAction } from "@/features/auth/actions";
 
 interface AccountMenuProps {
-  avatarUrl: string | null;
-  displayName: string;
+  authenticated?: boolean;
+  avatarUrl?: string | null;
+  displayName?: string;
 }
 
 const links: Array<{ href: string; icon: IconName; label: string }> = [
@@ -19,7 +20,11 @@ const links: Array<{ href: string; icon: IconName; label: string }> = [
   { href: "/profile", icon: "profile", label: "Profile" },
 ];
 
-export function AccountMenu({ avatarUrl, displayName }: AccountMenuProps) {
+export function AccountMenu({
+  authenticated = true,
+  avatarUrl = null,
+  displayName = "Guest",
+}: AccountMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const reduceMotion = useReducedMotion();
@@ -53,12 +58,18 @@ export function AccountMenu({ avatarUrl, displayName }: AccountMenuProps) {
         onClick={() => setOpen((current) => !current)}
         type="button"
       >
-        <Avatar
-          className="border-accent shadow-[3px_3px_0_#2227F7] transition-shadow group-hover:shadow-[4px_4px_0_#FFD628]"
-          name={displayName}
-          size="md"
-          src={avatarUrl ?? undefined}
-        />
+        {authenticated ? (
+          <Avatar
+            className="border-accent shadow-[3px_3px_0_#2227F7] transition-shadow group-hover:shadow-[4px_4px_0_#FFD628]"
+            name={displayName}
+            size="md"
+            src={avatarUrl ?? undefined}
+          />
+        ) : (
+          <span className="border-foreground/40 bg-background text-foreground grid size-11 place-items-center rounded-sm border shadow-[3px_3px_0_#2227F7] transition-shadow group-hover:border-accent group-hover:shadow-[4px_4px_0_#FFD628]">
+            <Icon name="profile" size={20} />
+          </span>
+        )}
       </button>
 
       <AnimatePresence>
@@ -73,34 +84,53 @@ export function AccountMenu({ avatarUrl, displayName }: AccountMenuProps) {
           >
             <div className="border-foreground/15 border-b px-3 py-2.5">
               <p className="text-muted text-[0.62rem] font-bold tracking-[0.12em] uppercase">
-                Signed in as
+                {authenticated ? "Signed in as" : "Your vidi"}
               </p>
-              <p className="mt-1 truncate text-sm font-bold">{displayName}</p>
+              <p className="mt-1 truncate text-sm font-bold">
+                {authenticated ? displayName : "Not signed in"}
+              </p>
             </div>
-            <nav aria-label="Account navigation" className="py-1">
-              {links.map((item) => (
+            {authenticated ? (
+              <>
+                <nav aria-label="Account navigation" className="py-1">
+                  {links.map((item) => (
+                    <Link
+                      className="hover:bg-accent hover:text-background focus-visible:bg-accent focus-visible:text-background flex min-h-11 items-center gap-3 rounded-[2px] px-3 text-sm font-bold transition-colors outline-none"
+                      href={item.href}
+                      key={item.href}
+                      onClick={() => setOpen(false)}
+                      role="menuitem"
+                    >
+                      <Icon name={item.icon} size={17} />
+                      {item.label}
+                    </Link>
+                  ))}
+                </nav>
+                <form
+                  action={signOutAction}
+                  className="border-foreground/15 border-t pt-1"
+                >
+                  <button
+                    className="text-muted hover:bg-purple hover:text-foreground focus-visible:bg-purple focus-visible:text-foreground flex min-h-11 w-full items-center gap-3 rounded-[2px] px-3 text-sm font-bold transition-colors outline-none"
+                    role="menuitem"
+                    type="submit"
+                  >
+                    <Icon name="logout" size={17} />
+                    Log out
+                  </button>
+                </form>
+              </>
+            ) : (
                 <Link
-                  className="hover:bg-accent hover:text-background focus-visible:bg-accent focus-visible:text-background flex min-h-11 items-center gap-3 rounded-[2px] px-3 text-sm font-bold transition-colors outline-none"
-                  href={item.href}
-                  key={item.href}
+                  className="bg-accent text-background mt-1 flex min-h-11 items-center justify-between rounded-[2px] px-3 text-sm font-extrabold uppercase transition-transform active:scale-[0.98]"
+                  href="/auth"
                   onClick={() => setOpen(false)}
                   role="menuitem"
                 >
-                  <Icon name={item.icon} size={17} />
-                  {item.label}
+                  Sign up
+                  <Icon name="chevron-right" size={17} />
                 </Link>
-              ))}
-            </nav>
-            <form action={signOutAction} className="border-foreground/15 border-t pt-1">
-              <button
-                className="text-muted hover:bg-purple hover:text-foreground focus-visible:bg-purple focus-visible:text-foreground flex min-h-11 w-full items-center gap-3 rounded-[2px] px-3 text-sm font-bold transition-colors outline-none"
-                role="menuitem"
-                type="submit"
-              >
-                <Icon name="logout" size={17} />
-                Log out
-              </button>
-            </form>
+            )}
           </motion.div>
         ) : null}
       </AnimatePresence>

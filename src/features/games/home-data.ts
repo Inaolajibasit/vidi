@@ -43,7 +43,11 @@ export async function getHomeData(): Promise<HomeData> {
     .maybeSingle();
 
   const account = {
-    avatarUrl: profile?.avatar_url ?? null,
+    avatarUrl:
+      profile?.avatar_url ??
+      user.user_metadata.avatar_url ??
+      user.user_metadata.picture ??
+      null,
     displayName:
       profile?.display_name ??
       user.user_metadata.full_name ??

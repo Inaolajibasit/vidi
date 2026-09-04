@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
+import { Avatar } from "@/components/ui/avatar";
 import {
   AddFriendForm,
   FriendshipAction,
@@ -38,9 +39,12 @@ export default async function PublicProfilePage({
         vidi.
       </Link>
       <section className="py-20">
-        <div className="bg-purple text-foreground grid size-20 place-items-center rounded-sm text-3xl font-black shadow-[5px_5px_0_#FFD628]">
-          {profile.display_name[0]?.toUpperCase()}
-        </div>
+        <Avatar
+          className="border-accent shadow-[5px_5px_0_#FFD628]"
+          name={profile.display_name}
+          size="xl"
+          src={profile.avatar_url ?? undefined}
+        />
         <h1 className="font-display mt-7 text-6xl font-black uppercase">
           {profile.display_name}
         </h1>

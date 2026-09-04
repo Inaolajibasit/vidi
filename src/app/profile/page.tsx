@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AccountMenu } from "@/components/layout/account-menu";
+import { Avatar } from "@/components/ui/avatar";
 import { updateProfileAction } from "@/features/profiles/actions";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -21,6 +22,11 @@ export default async function ProfilePage() {
       .order("joined_at", { ascending: false }),
   ]);
   if (!profile) return null;
+  const avatarUrl =
+    profile.avatar_url ??
+    data.user.user_metadata.avatar_url ??
+    data.user.user_metadata.picture ??
+    null;
   const playerIds = (players ?? []).map((player) => player.id);
   const { data: ratings } = playerIds.length
     ? await admin
@@ -65,14 +71,17 @@ export default async function ProfilePage() {
           vidi.
         </Link>
         <AccountMenu
-          avatarUrl={profile.avatar_url}
+          avatarUrl={avatarUrl}
           displayName={profile.display_name}
         />
       </header>
       <section className="py-14">
-        <div className="bg-purple text-foreground grid size-20 place-items-center rounded-sm text-3xl font-black shadow-[5px_5px_0_#FFD628]">
-          {profile.display_name[0]?.toUpperCase()}
-        </div>
+        <Avatar
+          className="border-accent shadow-[5px_5px_0_#FFD628]"
+          name={profile.display_name}
+          size="xl"
+          src={avatarUrl ?? undefined}
+        />
         <h1 className="font-display mt-6 text-6xl font-black uppercase">
           {profile.display_name}
         </h1>

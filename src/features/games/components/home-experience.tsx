@@ -153,16 +153,11 @@ export function HomeExperience({
           >
             vidi<span className="text-foreground">.</span>
           </Link>
-          {authenticated && profile ? (
-            <AccountMenu
-              avatarUrl={profile.avatarUrl}
-              displayName={profile.displayName}
-            />
-          ) : (
-            <span className="text-label text-foreground/60">
-              seen it? prove it.
-            </span>
-          )}
+          <AccountMenu
+            authenticated={authenticated}
+            avatarUrl={profile?.avatarUrl}
+            displayName={profile?.displayName}
+          />
         </motion.header>
 
         <div className="flex flex-1 flex-col justify-center pt-12 pb-7 md:flex-none md:pt-20 md:pb-0">

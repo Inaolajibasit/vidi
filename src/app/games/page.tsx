@@ -75,7 +75,12 @@ export default async function GamesPage() {
             vidi<span className="text-purple">.</span>
           </Link>
           <AccountMenu
-            avatarUrl={profile?.avatar_url ?? null}
+            avatarUrl={
+              profile?.avatar_url ??
+              authData.user.user_metadata.avatar_url ??
+              authData.user.user_metadata.picture ??
+              null
+            }
             displayName={displayName}
           />
         </header>
