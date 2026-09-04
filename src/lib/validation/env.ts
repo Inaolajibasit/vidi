@@ -9,6 +9,7 @@ const environmentSchema = z
     TMDB_ACCESS_TOKEN: z.string().min(1).optional(),
     NEXT_PUBLIC_APP_URL: z.url(),
     NEXT_PUBLIC_LEGAL_EMAIL: z.email().optional(),
+    ENABLE_CHALLENGES: z.enum(["true", "false"]).optional(),
     MOVIE_SYNC_TARGET: z.coerce.number().int().min(3_000).max(5_000).optional(),
   })
   .refine(

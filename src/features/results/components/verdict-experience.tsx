@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { createChallengeAction } from "@/features/challenges/actions";
+import { ShareResultCard } from "@/features/results/components/share-result-card";
 import type {
   VerdictData,
   VerdictMovie,
@@ -51,11 +52,7 @@ function Reveal({
   );
 }
 
-function PosterStrip({
-  movies,
-}: {
-  movies: VerdictMovie[];
-}) {
+function PosterStrip({ movies }: { movies: VerdictMovie[] }) {
   if (!movies.length)
     return <p className="text-muted mt-5">Nothing made the cut.</p>;
   return (
@@ -83,11 +80,16 @@ function PosterStrip({
   );
 }
 
-export function VerdictExperience({ verdict }: { verdict: VerdictData }) {
+export function VerdictExperience({
+  challengesEnabled,
+  verdict,
+}: {
+  challengesEnabled: boolean;
+  verdict: VerdictData;
+}) {
   const reduceMotion = useReducedMotion();
   const target = Math.round(verdict.overallScore);
   const [displayScore, setDisplayScore] = useState(reduceMotion ? target : 0);
-  const [shareLabel, setShareLabel] = useState("Share results");
 
   useEffect(() => {
     if (reduceMotion) return;
@@ -102,22 +104,6 @@ export function VerdictExperience({ verdict }: { verdict: VerdictData }) {
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
   }, [reduceMotion, target]);
-
-  async function share() {
-    const data = {
-      text: `${target}% movie match on vidi — ${verdictCopy(target)}`,
-      title: "The vidi verdict",
-      url: window.location.href,
-    };
-    try {
-      const canShare = "share" in navigator;
-      if (canShare) await navigator.share(data);
-      else await navigator.clipboard.writeText(`${data.text} ${data.url}`);
-      setShareLabel(canShare ? "Shared" : "Link copied");
-    } catch {
-      setShareLabel("Share results");
-    }
-  }
 
   return (
     <main className="editorial-screen font-ui bg-background min-h-dvh overflow-x-hidden">
@@ -252,9 +238,7 @@ export function VerdictExperience({ verdict }: { verdict: VerdictData }) {
                 Movies your friends rate highly that you have not marked as
                 seen.
               </p>
-              <PosterStrip
-                movies={verdict.myWatchlist}
-              />
+              <PosterStrip movies={verdict.myWatchlist} />
               {verdict.isAuthenticated && verdict.myWatchlist.length ? (
                 <form action={savePersonalGameWatchlistAction} className="mt-7">
                   <input
@@ -290,9 +274,7 @@ export function VerdictExperience({ verdict }: { verdict: VerdictData }) {
               <p className="text-muted mt-3 max-w-sm text-sm leading-relaxed">
                 The strongest recommendations across everyone in this game.
               </p>
-              <PosterStrip
-                movies={verdict.ourWatchlist}
-              />
+              <PosterStrip movies={verdict.ourWatchlist} />
               {verdict.isAuthenticated && verdict.ourWatchlist.length ? (
                 <form action={saveSharedGameWatchlistAction} className="mt-7">
                   <input
@@ -338,7 +320,7 @@ export function VerdictExperience({ verdict }: { verdict: VerdictData }) {
 
         <Reveal>
           <div className="grid gap-3 pt-16">
-            {verdict.isAuthenticated ? (
+            {challengesEnabled && verdict.isAuthenticated ? (
               <form action={createChallengeAction}>
                 <input
                   name="inviteCode"
@@ -352,17 +334,15 @@ export function VerdictExperience({ verdict }: { verdict: VerdictData }) {
                   Challenge someone
                 </button>
               </form>
-            ) : (
+            ) : challengesEnabled ? (
               <Link
                 className="bg-accent text-background flex min-h-14 items-center justify-center rounded-md text-sm font-extrabold uppercase"
                 href={`/auth?next=${encodeURIComponent(`/results/${verdict.inviteCode}`)}`}
               >
                 Sign up to challenge
               </Link>
-            )}
-            <Button fullWidth onClick={share} size="lg" variant="purple">
-              {shareLabel}
-            </Button>
+            ) : null}
+            <ShareResultCard inviteCode={verdict.inviteCode} />
             <Link
               className="border-border flex min-h-14 items-center justify-center rounded-md border text-sm font-bold uppercase"
               href="/games/new"
