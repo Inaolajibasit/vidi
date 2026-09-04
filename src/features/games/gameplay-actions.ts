@@ -7,8 +7,12 @@ import {
   getGameIdentity,
   identityMatchesPlayer,
 } from "@/features/games/identity";
-import { inviteCodeSchema } from "@/features/games/validation";
+import {
+  GAME_MODE_DETAILS,
+  inviteCodeSchema,
+} from "@/features/games/validation";
 import { calculateAndStoreResults } from "@/features/results/calculate-results";
+import { trackServerAnalytics } from "@/lib/analytics/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 const answerSchema = z
@@ -42,7 +46,7 @@ export async function ensureGameResultsAction(
     const admin = getSupabaseAdmin();
     const { data: game } = await admin
       .from("games")
-      .select("id, status")
+      .select("id, mode, status")
       .eq("invite_code", inviteCode.data)
       .maybeSingle();
     if (!game) return "error";
@@ -90,7 +94,7 @@ export async function recordAnswerAction(
     const admin = getSupabaseAdmin();
     const { data: game } = await admin
       .from("games")
-      .select("id, status")
+      .select("id, mode, status")
       .eq("invite_code", parsed.data.inviteCode)
       .maybeSingle();
 
@@ -169,6 +173,17 @@ export async function recordAnswerAction(
         reaction_pending: z.boolean(),
       })
       .parse(data);
+
+    if (!parsed.data.seen || parsed.data.reaction !== null) {
+      await trackServerAnalytics(
+        "movie_swiped",
+        {
+          deckSize: GAME_MODE_DETAILS[game.mode].movieCount,
+          progress: result.progress,
+        },
+        parsed.data.inviteCode,
+      );
+    }
 
     if (result.complete) {
       try {

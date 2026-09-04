@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { claimGuestHistory } from "@/features/auth/actions";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { trackAnalytics } from "@/lib/analytics/client";
+import { isNewAuthUser } from "@/features/auth/is-new-user";
 
 const emailSchema = z.email();
 const otpSchema = z.string().regex(/^\d{6}$/);
@@ -18,6 +20,7 @@ export function AuthForm({ next = "/profile" }: { next?: string }) {
   async function google() {
     if (!client) return setMessage("Authentication is not configured.");
     setBusy(true);
+    trackAnalytics("signup_started", { method: "google" });
     const redirectTo = `${location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
     const { error } = await client.auth.signInWithOAuth({
       provider: "google",
@@ -34,6 +37,7 @@ export function AuthForm({ next = "/profile" }: { next?: string }) {
     if (!parsed.success) return setMessage("Enter a valid email address.");
     if (!client) return setMessage("Authentication is not configured.");
     setBusy(true);
+    trackAnalytics("signup_started", { method: "email" });
     const { error } = await client.auth.signInWithOtp({
       email: parsed.data,
       options: {
@@ -52,7 +56,7 @@ export function AuthForm({ next = "/profile" }: { next?: string }) {
     if (!code.success) return setMessage("Enter the 6-digit code.");
     if (!client) return;
     setBusy(true);
-    const { error } = await client.auth.verifyOtp({
+    const { data, error } = await client.auth.verifyOtp({
       email: email.trim().toLowerCase(),
       token: code.data,
       type: "email",
@@ -61,7 +65,13 @@ export function AuthForm({ next = "/profile" }: { next?: string }) {
       setBusy(false);
       return setMessage(error.message);
     }
-    await claimGuestHistory();
+    const claim = await claimGuestHistory();
+    if (data.user && isNewAuthUser(data.user)) {
+      trackAnalytics("signup_completed", {
+        hadGuestHistory: claim.status === "claimed",
+        method: "email",
+      });
+    }
     router.replace(next);
     router.refresh();
   }

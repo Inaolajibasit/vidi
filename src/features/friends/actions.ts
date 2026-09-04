@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { trackServerAnalytics } from "@/lib/analytics/server";
 
 export interface FriendActionState {
   message?: string;
@@ -88,6 +89,7 @@ export async function sendFriendRequestAction(
     };
 
   refreshFriendshipViews(addressee.username);
+  await trackServerAnalytics("friend_request_sent", {});
   return { message: "Friend request sent.", success: true };
 }
 

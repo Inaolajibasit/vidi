@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { trackServerAnalytics } from "@/lib/analytics/server";
 
 const inviteCodeSchema = z.string().trim().toUpperCase().regex(/^[A-Z0-9]{4,12}$/);
 const itemIdSchema = z.uuid();
@@ -122,6 +123,11 @@ export async function savePersonalGameWatchlistAction(formData: FormData) {
   if (!generated) return;
   const watchlistId = await getOrCreatePersonalWatchlist(profileId);
   await addMovies(watchlistId, generated.personalMovieIds, generated.gameId);
+  await trackServerAnalytics(
+    "watchlist_saved",
+    { itemCount: generated.personalMovieIds.length, kind: "personal" },
+    generated.gameId,
+  );
   revalidatePath(`/results/${code.data}`);
   revalidatePath("/watchlist");
 }
@@ -174,6 +180,11 @@ export async function saveSharedGameWatchlistAction(formData: FormData) {
   }
 
   await addMovies(watchlistId, generated.sharedMovieIds, generated.gameId);
+  await trackServerAnalytics(
+    "watchlist_saved",
+    { itemCount: generated.sharedMovieIds.length, kind: "shared" },
+    generated.gameId,
+  );
   revalidatePath(`/results/${code.data}`);
   revalidatePath("/watchlist");
 }
@@ -223,5 +234,9 @@ export async function manuallyAddWatchlistItemAction(formData: FormData) {
   if (!profileId || !movieId.success) return;
   const watchlistId = await getOrCreatePersonalWatchlist(profileId);
   await addMovies(watchlistId, [movieId.data], null);
+  await trackServerAnalytics("watchlist_saved", {
+    itemCount: 1,
+    kind: "personal",
+  });
   revalidatePath("/watchlist");
 }

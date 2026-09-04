@@ -3,13 +3,18 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
+import { trackServerAnalytics } from "@/lib/analytics/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import {
   getGameIdentity,
   identityMatchesPlayer,
 } from "@/features/games/identity";
 import { broadcastLobbyEvent } from "@/features/games/realtime";
-import { inviteCodeSchema, joinGameSchema } from "@/features/games/validation";
+import {
+  GAME_MODE_DETAILS,
+  inviteCodeSchema,
+  joinGameSchema,
+} from "@/features/games/validation";
 
 export interface LobbyActionState {
   displayNameError?: string;
@@ -94,6 +99,11 @@ export async function joinGameAction(
       }
 
       if (!insertError) {
+        await trackServerAnalytics(
+          "player_joined",
+          { isGuest: !identity.profileId },
+          inviteCode,
+        );
         revalidatePath(lobbyPath(inviteCode));
         await broadcastLobbyEvent(inviteCode, "player_joined");
       }
@@ -118,7 +128,7 @@ export async function startGameAction(
     const admin = getSupabaseAdmin();
     const { data: game, error: gameError } = await admin
       .from("games")
-      .select("id, status")
+      .select("id, mode, status")
       .eq("invite_code", inviteCode)
       .maybeSingle();
 
@@ -157,6 +167,15 @@ export async function startGameAction(
 
     revalidatePath(lobbyPath(inviteCode));
     await broadcastLobbyEvent(inviteCode, "game_started");
+    await trackServerAnalytics(
+      "game_started",
+      {
+        deckSize: GAME_MODE_DETAILS[game.mode].movieCount,
+        mode: game.mode,
+        playerCount: players.length,
+      },
+      inviteCode,
+    );
     return {};
   } catch (error) {
     console.error("Start game failed", error);

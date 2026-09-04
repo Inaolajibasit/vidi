@@ -10,6 +10,7 @@ import {
   type ShareCardFormat,
 } from "@/features/results/share-card";
 import { cn } from "@/lib/utils";
+import { trackAnalytics } from "@/lib/analytics/client";
 
 function ShareIcon() {
   return (
@@ -109,11 +110,21 @@ export function ShareResultCard({ inviteCode }: { inviteCode: string }) {
 
       if (navigator.share && navigator.canShare?.(shareData)) {
         await navigator.share(shareData);
+        trackAnalytics(
+          "result_shared",
+          { format, method: "web_share" },
+          inviteCode,
+        );
         setStatus("shared");
         return;
       }
 
       downloadBlob(blob, filename);
+      trackAnalytics(
+        "result_shared",
+        { format, method: "download" },
+        inviteCode,
+      );
       setStatus("downloaded");
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {

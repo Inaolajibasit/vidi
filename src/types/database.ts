@@ -381,6 +381,19 @@ export interface Database {
         };
         Returns: Json;
       };
+      get_product_analytics_metrics: {
+        Args: { p_period_end: string; p_period_start: string };
+        Returns: Json;
+      };
+      record_product_analytics_event: {
+        Args: {
+          p_actor_hash: string | null;
+          p_entity_hash: string | null;
+          p_event_name: string;
+          p_properties: Json;
+        };
+        Returns: boolean;
+      };
       record_game_answer: {
         Args: {
           p_game_id: string;

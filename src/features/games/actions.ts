@@ -8,6 +8,7 @@ import {
   buildRankedMovieDeck,
   generateInviteCode,
 } from "@/lib/algorithms/game-deck";
+import { trackServerAnalytics } from "@/lib/analytics/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getGameIdentity } from "@/features/games/identity";
 import {
@@ -164,6 +165,16 @@ export async function createGameAction(
 
       if (!error) {
         inviteCode = data;
+        await trackServerAnalytics(
+          "game_created",
+          {
+            deckSize: movieCount,
+            isGuest: !identity.profileId,
+            maxPlayers: parsed.data.maxPlayers,
+            mode: parsed.data.mode,
+          },
+          data,
+        );
         break;
       }
 

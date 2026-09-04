@@ -10,6 +10,8 @@ const environmentSchema = z
     NEXT_PUBLIC_APP_URL: z.url(),
     NEXT_PUBLIC_LEGAL_EMAIL: z.email().optional(),
     ENABLE_CHALLENGES: z.enum(["true", "false"]).optional(),
+    ANALYTICS_PROVIDER: z.enum(["disabled", "supabase"]).optional(),
+    ANALYTICS_HASH_SECRET: z.string().min(32).optional(),
     MOVIE_SYNC_TARGET: z.coerce.number().int().min(3_000).max(5_000).optional(),
   })
   .refine(
@@ -17,6 +19,16 @@ const environmentSchema = z
     {
       message: "Set TMDB_ACCESS_TOKEN or TMDB_API_KEY.",
       path: ["TMDB_ACCESS_TOKEN"],
+    },
+  )
+  .refine(
+    (environment) =>
+      environment.ANALYTICS_PROVIDER !== "supabase" ||
+      Boolean(environment.ANALYTICS_HASH_SECRET),
+    {
+      message:
+        "Set ANALYTICS_HASH_SECRET when ANALYTICS_PROVIDER is supabase.",
+      path: ["ANALYTICS_HASH_SECRET"],
     },
   );
 

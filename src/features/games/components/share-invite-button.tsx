@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { trackAnalytics } from "@/lib/analytics/client";
 
 export function InviteActions({ inviteCode }: { inviteCode: string }) {
   const [copyLabel, setCopyLabel] = useState("Copy link");
@@ -12,6 +13,11 @@ export function InviteActions({ inviteCode }: { inviteCode: string }) {
   async function copyInvite() {
     try {
       await navigator.clipboard.writeText(window.location.href);
+      trackAnalytics(
+        "invite_shared",
+        { method: "clipboard" },
+        inviteCode,
+      );
       setCopyLabel("Copied");
     } catch {
       setCopyLabel("Copy failed");
@@ -29,6 +35,11 @@ export function InviteActions({ inviteCode }: { inviteCode: string }) {
           title: "Join my vidi game",
           url,
         });
+        trackAnalytics(
+          "invite_shared",
+          { method: "web_share" },
+          inviteCode,
+        );
         return;
       }
 

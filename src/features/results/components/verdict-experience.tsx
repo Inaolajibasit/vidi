@@ -16,6 +16,7 @@ import {
   savePersonalGameWatchlistAction,
   saveSharedGameWatchlistAction,
 } from "@/features/watchlists/actions";
+import { trackAnalyticsOnce } from "@/lib/analytics/client";
 
 const reactionLabel = {
   cant_remember: "Can't remember",
@@ -90,6 +91,15 @@ export function VerdictExperience({
   const reduceMotion = useReducedMotion();
   const target = Math.round(verdict.overallScore);
   const [displayScore, setDisplayScore] = useState(reduceMotion ? target : 0);
+
+  useEffect(() => {
+    trackAnalyticsOnce(
+      `results-viewed:${verdict.inviteCode}`,
+      "results_viewed",
+      {},
+      verdict.inviteCode,
+    );
+  }, [verdict.inviteCode]);
 
   useEffect(() => {
     if (reduceMotion) return;

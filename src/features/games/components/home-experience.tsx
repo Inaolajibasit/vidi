@@ -2,12 +2,17 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
+import { useEffect } from "react";
 
 import { AccountMenu } from "@/components/layout/account-menu";
 import { Icon } from "@/components/ui/icon";
 import PixelBlast from "@/components/ui/PixelBlast";
 import { cn } from "@/lib/utils";
 import type { RecentGame } from "@/features/games/home-data";
+import {
+  trackAnalytics,
+  trackAnalyticsOnce,
+} from "@/lib/analytics/client";
 
 interface HomeExperienceProps {
   authenticated: boolean;
@@ -32,10 +37,12 @@ const statusLabels = {
 function ActionLink({
   children,
   href,
+  onClick,
   primary = false,
 }: {
   children: React.ReactNode;
   href: string;
+  onClick?: () => void;
   primary?: boolean;
 }) {
   return (
@@ -47,6 +54,7 @@ function ActionLink({
           : "border-foreground/55 bg-background/70 text-foreground hover:border-foreground hover:bg-foreground hover:text-background backdrop-blur-sm",
       )}
       href={href}
+      onClick={onClick}
     >
       <span>{children}</span>
       <Icon
@@ -108,6 +116,10 @@ export function HomeExperience({
   const reduceMotion = useReducedMotion();
   const initial = reduceMotion ? false : { opacity: 1, y: 18 };
   const transition = { duration: 0.36, ease: [0.16, 1, 0.3, 1] as const };
+
+  useEffect(() => {
+    trackAnalyticsOnce("home-viewed", "home_viewed", {});
+  }, []);
 
   return (
     <main
@@ -190,7 +202,11 @@ export function HomeExperience({
             </p>
 
             <div className="grid gap-3">
-              <ActionLink href="/games/new" primary>
+              <ActionLink
+                href="/games/new"
+                onClick={() => trackAnalytics("create_game_clicked", {})}
+                primary
+              >
                 Create game
               </ActionLink>
               <ActionLink href="/join">Join game</ActionLink>

@@ -7,8 +7,10 @@ import {
 } from "@/lib/algorithms/compatibility";
 import { generateWatchlists } from "@/lib/algorithms/watchlists";
 import { assignMoviePersonality } from "@/lib/algorithms/personality";
+import { trackServerAnalytics } from "@/lib/analytics/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { CompatibilityResultInsert } from "@/types/database";
+import { GAME_MODE_DETAILS } from "@/features/games/validation";
 
 export async function calculateAndStoreResults(gameId: string) {
   const admin = getSupabaseAdmin();
@@ -175,12 +177,25 @@ export async function calculateAndStoreResults(gameId: string) {
     .from("compatibility_results")
     .insert(rows);
   if (insertError) throw insertError;
-  const { error: completeError } = await admin
+  const { data: completedGame, error: completeError } = await admin
     .from("games")
     .update({ completed_at: new Date().toISOString(), status: "completed" })
     .eq("id", gameId)
-    .eq("status", "waiting_results");
+    .eq("status", "waiting_results")
+    .select("id, invite_code, mode")
+    .maybeSingle();
   if (completeError) throw completeError;
+  if (completedGame) {
+    await trackServerAnalytics(
+      "game_completed",
+      {
+        deckSize: GAME_MODE_DETAILS[completedGame.mode].movieCount,
+        mode: completedGame.mode,
+        playerCount: players.length,
+      },
+      completedGame.invite_code,
+    );
+  }
 
   // Profile enrichment must never hold the completed game's verdict hostage.
   // A failed write is reported for observability and can be repaired later.

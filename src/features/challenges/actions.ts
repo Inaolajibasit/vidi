@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import { getGameIdentity } from "@/features/games/identity";
 import { generateInviteCode } from "@/lib/algorithms/game-deck";
+import { trackServerAnalytics } from "@/lib/analytics/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 const codeSchema = z.string().trim().toUpperCase().regex(/^[A-Z0-9]{6,12}$/);
@@ -101,6 +102,11 @@ export async function createChallengeAction(formData: FormData) {
         event_type: "challenge_created",
         profile_id: identity.profileId,
       });
+      await trackServerAnalytics(
+        "challenge_created",
+        {},
+        challenge.id,
+      );
       redirect(`/challenge/${code}`);
     }
     if (error.code !== "23505") throw error;
@@ -127,6 +133,7 @@ export async function trackChallengeOpenedAction(rawCode: string) {
     guest_session_id: identity?.guestSessionId ?? null,
     profile_id: identity?.profileId ?? null,
   });
+  await trackServerAnalytics("challenge_opened", {}, challenge.id);
 }
 
 export async function startChallengeAction(

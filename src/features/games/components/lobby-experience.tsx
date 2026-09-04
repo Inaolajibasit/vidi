@@ -19,6 +19,7 @@ import type { LobbyData } from "@/features/games/lobby-data";
 import { lobbyTopic } from "@/features/games/realtime-topic";
 import { GAME_MODE_DETAILS } from "@/features/games/validation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { trackAnalyticsOnce } from "@/lib/analytics/client";
 
 function WaitingAnimation() {
   const reduceMotion = useReducedMotion();
@@ -83,6 +84,17 @@ export function LobbyExperience({ lobby }: { lobby: LobbyData }) {
   const waitingSlots = Math.max(0, lobby.maxPlayers - lobby.players.length);
   const canStart = lobby.isHost && lobby.players.length >= 2;
   const isFull = lobby.players.length >= lobby.maxPlayers;
+
+  useEffect(() => {
+    if (!lobby.isParticipant) {
+      trackAnalyticsOnce(
+        `join-opened:${lobby.inviteCode}`,
+        "join_page_opened",
+        {},
+        lobby.inviteCode,
+      );
+    }
+  }, [lobby.inviteCode, lobby.isParticipant]);
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();

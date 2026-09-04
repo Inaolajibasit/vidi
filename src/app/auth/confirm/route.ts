@@ -2,6 +2,8 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 import { claimGuestHistoryForUser } from "@/features/auth/claim-guest-history";
+import { isNewAuthUser } from "@/features/auth/is-new-user";
+import { trackServerAnalytics } from "@/lib/analytics/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const allowedTypes = new Set<EmailOtpType>([
@@ -31,6 +33,12 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/auth?error=expired_link", url));
   }
 
-  await claimGuestHistoryForUser(data.user.id);
+  const claim = await claimGuestHistoryForUser(data.user.id);
+  if (isNewAuthUser(data.user)) {
+    await trackServerAnalytics("signup_completed", {
+      hadGuestHistory: claim.status === "claimed",
+      method: "email",
+    });
+  }
   return NextResponse.redirect(new URL(next, url));
 }

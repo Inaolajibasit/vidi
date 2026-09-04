@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { trackServerAnalytics } from "@/lib/analytics/server";
 
 export async function completeChallengeAttempt(gameId: string) {
   const admin = getSupabaseAdmin();
@@ -22,4 +23,9 @@ export async function completeChallengeAttempt(gameId: string) {
     profile_id: attempt.participant_profile_id,
   });
   if (eventError) throw eventError;
+  await trackServerAnalytics(
+    "challenge_completed",
+    {},
+    attempt.challenge_id,
+  );
 }
