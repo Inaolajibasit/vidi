@@ -6,8 +6,12 @@ import {
   formatPlayerNames,
   parseShareCardFormat,
   SHARE_CARD_FORMATS,
+  type ShareCardFormat,
 } from "@/features/results/share-card";
-import { getShareCardData } from "@/features/results/share-card-data";
+import {
+  getShareCardData,
+  type ShareCardData,
+} from "@/features/results/share-card-data";
 
 export const runtime = "nodejs";
 
@@ -100,15 +104,22 @@ export async function GET(
     );
   }
 
+  const format = parseShareCardFormat(
+    new URL(request.url).searchParams.get("format"),
+  );
+  return renderShareCard(data, format);
+}
+
+export async function renderShareCard(
+  data: ShareCardData,
+  format: ShareCardFormat,
+) {
   const [ericaOne, fascinate, geist, geistBold] = await Promise.all([
     loadFont(FONT_URLS.ericaOne),
     loadFont(FONT_URLS.fascinate),
     loadFont(FONT_URLS.geist),
     loadFont(FONT_URLS.geistBold),
   ]);
-  const format = parseShareCardFormat(
-    new URL(request.url).searchParams.get("format"),
-  );
   const dimensions = SHARE_CARD_FORMATS[format];
   const square = format === "square";
   const story = format === "story";
@@ -302,19 +313,19 @@ export async function GET(
         <Stat
           background="#2227F7"
           color="#F1EFE7"
-          label="Taste"
+          label="Movie taste"
           value={`${data.tasteScore}%`}
         />
         <Stat
           background="#CBC7FF"
           color="#17122B"
-          label="Knowledge"
+          label="Movie knowledge"
           value={`${data.knowledgeScore}%`}
         />
         <Stat
           background="#F1EFE7"
           color="#090909"
-          label="Shared"
+          label="Shared favorite"
           value={`${data.sharedFavouritesCount}`}
         />
       </div>
@@ -325,7 +336,8 @@ export async function GET(
           background: "#17122B",
           borderRadius: "70px 0 0 0",
           display: "flex",
-          flex: story ? 1 : undefined,
+          flexGrow: story ? 1 : 0,
+          flexShrink: 0,
           justifyContent: "space-between",
           marginTop: 18,
           minHeight: square ? 150 : story ? 285 : 190,
