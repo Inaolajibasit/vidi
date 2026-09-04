@@ -55,25 +55,29 @@ function SavedMovie({ item }: { item: SavedItem }) {
           </p>
         ) : null}
       </div>
-      <div className="grid shrink-0 gap-1 text-right">
+      <div className="flex shrink-0 items-center gap-2">
         {!item.watchedAt ? (
           <form action={markWatchlistItemWatchedAction}>
             <input name="itemId" type="hidden" value={item.id} />
             <button
-              className="hover:text-accent min-h-9 px-2 text-[0.65rem] font-extrabold uppercase"
+              aria-label={`Mark ${item.movie.title} as watched`}
+              className="border-foreground/25 text-muted hover:border-accent hover:bg-accent hover:text-background focus-visible:outline-accent grid size-11 place-items-center rounded-sm border transition-[color,background-color,border-color,transform] active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2"
+              title="Mark watched"
               type="submit"
             >
-              Mark watched
+              <Icon name="check" size={18} />
             </button>
           </form>
         ) : null}
         <form action={removeWatchlistItemAction}>
           <input name="itemId" type="hidden" value={item.id} />
           <button
-            className="text-muted hover:text-foreground min-h-9 px-2 text-[0.65rem] font-bold uppercase"
+            aria-label={`Remove ${item.movie.title} from watchlist`}
+            className="border-foreground/25 text-muted hover:border-purple hover:bg-purple hover:text-foreground focus-visible:outline-purple grid size-11 place-items-center rounded-sm border transition-[color,background-color,border-color,transform] active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2"
+            title="Remove"
             type="submit"
           >
-            Remove
+            <Icon name="trash" size={17} />
           </button>
         </form>
       </div>
@@ -173,8 +177,9 @@ export default async function WatchlistPage({
 
         <section className="pt-14 pb-8">
           <p className="text-label text-purple">What&apos;s next</p>
-          <h1 className="font-display mt-3 text-[clamp(4rem,19vw,6.5rem)] leading-[0.8] font-black tracking-[-0.055em] uppercase">
-            Watchlists
+          <h1 className="font-display mt-3 text-[clamp(4.5rem,24vw,7rem)] leading-[0.72] font-black tracking-[-0.055em] uppercase">
+            <span className="block">Watch</span>
+            <span className="text-accent block">lists.</span>
           </h1>
         </section>
 

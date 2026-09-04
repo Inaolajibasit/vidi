@@ -268,7 +268,7 @@ export function VerdictExperience({ verdict }: { verdict: VerdictData }) {
                   >
                     {verdict.myWatchlistSaved
                       ? "Saved to my watchlist"
-                      : `Add all ${verdict.myWatchlist.length} movies`}
+                      : "Add to watchlist"}
                   </Button>
                 </form>
               ) : null}

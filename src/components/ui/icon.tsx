@@ -16,6 +16,7 @@ export type IconName =
   | "search"
   | "share"
   | "spark"
+  | "trash"
   | "users";
 
 const paths: Record<IconName, React.ReactNode> = {
@@ -81,6 +82,14 @@ const paths: Record<IconName, React.ReactNode> = {
   ),
   spark: (
     <path d="m12 2 1.6 6.4L20 10l-6.4 1.6L12 18l-1.6-6.4L4 10l6.4-1.6L12 2Z" />
+  ),
+  trash: (
+    <>
+      <path d="M4 7h16" />
+      <path d="M9 7V4h6v3" />
+      <path d="m6 7 1 14h10l1-14" />
+      <path d="M10 11v6M14 11v6" />
+    </>
   ),
   users: (
     <>
