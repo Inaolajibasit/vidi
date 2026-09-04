@@ -16,6 +16,7 @@ interface AccountMenuProps {
 
 const links: Array<{ href: string; icon: IconName; label: string }> = [
   { href: "/games", icon: "game", label: "Games" },
+  { href: "/watchlist", icon: "spark", label: "Watchlists" },
   { href: "/friends", icon: "users", label: "Friends" },
   { href: "/profile", icon: "profile", label: "Profile" },
 ];

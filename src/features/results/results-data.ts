@@ -11,7 +11,6 @@ import type { MovieReaction } from "@/types/database";
 export interface VerdictMovie {
   id: string;
   posterUrl: string | null;
-  saved: boolean;
   title: string;
 }
 
@@ -37,7 +36,9 @@ export interface VerdictData {
   sharedFavourites: VerdictMovie[];
   tasteScore: number;
   myWatchlist: VerdictMovie[];
+  myWatchlistSaved: boolean;
   ourWatchlist: VerdictMovie[];
+  ourWatchlistSaved: boolean;
 }
 
 function playerPersonality(metrics: unknown, playerId: string) {
@@ -164,18 +165,39 @@ export async function getVerdictData(
         .in("id", movieIds)
     : { data: [] };
   let savedMovieIds = new Set<string>();
+  let sharedWatchlistSaved = false;
   if (identity?.profileId) {
     const { data: lists } = await admin
       .from("watchlists")
-      .select("id")
+      .select("id, kind, source_game_id")
       .eq("profile_id", identity.profileId);
-    const listIds = (lists ?? []).map((list) => list.id);
-    if (listIds.length) {
+    const personalListIds = (lists ?? [])
+      .filter((list) => list.kind === "personal")
+      .map((list) => list.id);
+    const sharedListIds = (lists ?? [])
+      .filter(
+        (list) => list.kind === "shared" && list.source_game_id === game.id,
+      )
+      .map((list) => list.id);
+    const savedListIds = [...personalListIds, ...sharedListIds];
+    if (savedListIds.length) {
       const { data: items } = await admin
         .from("watchlist_items")
-        .select("movie_id")
-        .in("watchlist_id", listIds);
-      savedMovieIds = new Set((items ?? []).map((item) => item.movie_id));
+        .select("movie_id, watchlist_id")
+        .in("watchlist_id", savedListIds);
+      savedMovieIds = new Set(
+        (items ?? [])
+          .filter((item) => personalListIds.includes(item.watchlist_id))
+          .map((item) => item.movie_id),
+      );
+      const sharedMovieIds = new Set(
+        (items ?? [])
+          .filter((item) => sharedListIds.includes(item.watchlist_id))
+          .map((item) => item.movie_id),
+      );
+      sharedWatchlistSaved =
+        ourWatchlistIds.length > 0 &&
+        ourWatchlistIds.every((id) => sharedMovieIds.has(id));
     }
   }
   const movieMap = new Map(
@@ -184,7 +206,6 @@ export async function getVerdictData(
       {
         id: movie.id,
         posterUrl: posterUrl(movie.poster_path),
-        saved: savedMovieIds.has(movie.id),
         title: movie.title,
       },
     ]),
@@ -236,6 +257,10 @@ export async function getVerdictData(
     ),
     tasteScore: Number(primary.taste_score),
     myWatchlist: resolvedMyWatchlistIds.flatMap((id) => movieMap.get(id) ?? []),
+    myWatchlistSaved:
+      resolvedMyWatchlistIds.length > 0 &&
+      resolvedMyWatchlistIds.every((id) => savedMovieIds.has(id)),
     ourWatchlist: ourWatchlistIds.flatMap((id) => movieMap.get(id) ?? []),
+    ourWatchlistSaved: sharedWatchlistSaved,
   };
 }

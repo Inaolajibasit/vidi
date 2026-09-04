@@ -10,6 +10,7 @@ export type GameMode = "quick" | "proper" | "no_life";
 export type GameStatus =
   "waiting" | "active" | "waiting_results" | "completed" | "expired";
 export type MovieReaction = "loved" | "liked" | "meh" | "cant_remember";
+export type WatchlistKind = "personal" | "shared";
 export type FriendshipStatus = "pending" | "accepted" | "blocked";
 
 type TableDefinition<Row, Insert = Partial<Row>, Update = Partial<Insert>> = {
@@ -200,7 +201,9 @@ export type RatingInsert = Pick<
 export interface WatchlistRow {
   created_at: string;
   id: string;
+  kind: WatchlistKind;
   name: string;
+  participant_names: string[];
   profile_id: string;
   source_game_id: string | null;
   updated_at: string;
@@ -215,6 +218,7 @@ export interface WatchlistItemRow {
   movie_id: string;
   source_game_id: string | null;
   watchlist_id: string;
+  watched_at: string | null;
 }
 
 export type WatchlistItemInsert = Pick<

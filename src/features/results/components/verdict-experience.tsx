@@ -11,8 +11,8 @@ import type {
   VerdictMovie,
 } from "@/features/results/results-data";
 import {
-  removeWatchlistItemAction,
-  saveWatchlistItemAction,
+  savePersonalGameWatchlistAction,
+  saveSharedGameWatchlistAction,
 } from "@/features/watchlists/actions";
 
 const reactionLabel = {
@@ -51,13 +51,9 @@ function Reveal({
 }
 
 function PosterStrip({
-  inviteCode,
   movies,
-  saveable = false,
 }: {
-  inviteCode?: string;
   movies: VerdictMovie[];
-  saveable?: boolean;
 }) {
   if (!movies.length)
     return <p className="text-muted mt-5">Nothing made the cut.</p>;
@@ -80,24 +76,6 @@ function PosterStrip({
           <figcaption className="mt-2 line-clamp-2 text-xs font-semibold">
             {movie.title}
           </figcaption>
-          {saveable && inviteCode ? (
-            <form
-              action={
-                movie.saved
-                  ? removeWatchlistItemAction
-                  : saveWatchlistItemAction
-              }
-            >
-              <input name="inviteCode" type="hidden" value={inviteCode} />
-              <input name="movieId" type="hidden" value={movie.id} />
-              <button
-                className="text-label text-accent mt-2 min-h-8 rounded-sm underline decoration-transparent underline-offset-4 transition hover:decoration-current focus-visible:outline-2 focus-visible:outline-offset-2"
-                type="submit"
-              >
-                {movie.saved ? "Saved · remove" : "+ Save"}
-              </button>
-            </form>
-          ) : null}
         </figure>
       ))}
     </div>
@@ -274,10 +252,26 @@ export function VerdictExperience({ verdict }: { verdict: VerdictData }) {
                 seen.
               </p>
               <PosterStrip
-                inviteCode={verdict.inviteCode}
                 movies={verdict.myWatchlist}
-                saveable={verdict.isAuthenticated}
               />
+              {verdict.isAuthenticated && verdict.myWatchlist.length ? (
+                <form action={savePersonalGameWatchlistAction} className="mt-7">
+                  <input
+                    name="inviteCode"
+                    type="hidden"
+                    value={verdict.inviteCode}
+                  />
+                  <Button
+                    disabled={verdict.myWatchlistSaved}
+                    fullWidth
+                    type="submit"
+                  >
+                    {verdict.myWatchlistSaved
+                      ? "Saved to my watchlist"
+                      : `Add all ${verdict.myWatchlist.length} movies`}
+                  </Button>
+                </form>
+              ) : null}
               {!verdict.isAuthenticated ? (
                 <p className="border-purple/40 text-muted mt-7 border-l-2 pl-4 text-sm leading-relaxed">
                   Playing as a guest. Create an account to save these
@@ -296,10 +290,27 @@ export function VerdictExperience({ verdict }: { verdict: VerdictData }) {
                 The strongest recommendations across everyone in this game.
               </p>
               <PosterStrip
-                inviteCode={verdict.inviteCode}
                 movies={verdict.ourWatchlist}
-                saveable={verdict.isAuthenticated}
               />
+              {verdict.isAuthenticated && verdict.ourWatchlist.length ? (
+                <form action={saveSharedGameWatchlistAction} className="mt-7">
+                  <input
+                    name="inviteCode"
+                    type="hidden"
+                    value={verdict.inviteCode}
+                  />
+                  <Button
+                    disabled={verdict.ourWatchlistSaved}
+                    fullWidth
+                    type="submit"
+                    variant="purple"
+                  >
+                    {verdict.ourWatchlistSaved
+                      ? "Our watchlist saved"
+                      : "Save our watchlist"}
+                  </Button>
+                </form>
+              ) : null}
             </div>
           </Reveal>
         </div>
