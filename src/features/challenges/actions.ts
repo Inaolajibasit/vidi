@@ -20,6 +20,29 @@ export interface StartChallengeState {
   message?: string;
 }
 
+function challengeStartMessage(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return "Could not start the challenge. Try again.";
+  }
+  const value = error as { code?: string; message?: string };
+  if (value.code === "PGRST202") {
+    return "Challenge setup is not active yet. Run the latest Supabase migration.";
+  }
+  if (value.code === "23503") {
+    return "The original game is no longer available for this challenge.";
+  }
+  if (value.code === "23514") {
+    return "The original game data is incomplete. Create a new challenge link.";
+  }
+  if (value.message?.includes("Source game is not complete")) {
+    return "The original game must be completed before this challenge can start.";
+  }
+  if (value.message?.includes("Challenge owner has no completed answers")) {
+    return "The challenger’s finished answers could not be found.";
+  }
+  return "Could not start the challenge. Try again.";
+}
+
 export async function createChallengeAction(formData: FormData) {
   const inviteCode = codeSchema.safeParse(formData.get("inviteCode"));
   const identity = await getGameIdentity();
@@ -149,8 +172,19 @@ export async function startChallengeAction(
       if (error.code !== "23505") throw error;
     }
   } catch (error) {
-    console.error("Challenge start failed", error);
-    return { message: "Could not start the challenge. Try again." };
+    const databaseError = error as {
+      code?: string;
+      details?: string;
+      hint?: string;
+      message?: string;
+    };
+    console.error("Challenge start failed", {
+      code: databaseError.code,
+      details: databaseError.details,
+      hint: databaseError.hint,
+      message: databaseError.message,
+    });
+    return { message: challengeStartMessage(error) };
   }
 
   if (startedGameCode) redirect(`/play/${startedGameCode}`);

@@ -191,3 +191,5 @@ revoke all on function public.start_challenge_attempt(
 grant execute on function public.start_challenge_attempt(
   uuid, varchar, text, uuid, uuid
 ) to service_role;
+
+notify pgrst, 'reload schema';
