@@ -9,6 +9,8 @@ import { signOutAction } from "@/features/auth/actions";
 
 interface AccountMenuProps {
   authenticated?: boolean;
+  friendRequests?: number;
+  incompleteGames?: number;
   avatarUrl?: string | null;
   displayName?: string;
 }
@@ -22,11 +24,14 @@ const links: Array<{ href: string; icon: IconName; label: string }> = [
 
 export function AccountMenu({
   authenticated = true,
+  friendRequests = 0,
+  incompleteGames = 0,
   avatarUrl = null,
   displayName = "Guest",
 }: AccountMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const hasAttention = friendRequests > 0 || incompleteGames > 0;
 
   useEffect(() => {
     if (!open) return;
@@ -69,6 +74,13 @@ export function AccountMenu({
             <Icon name="profile" size={20} />
           </span>
         )}
+        {authenticated && hasAttention && !open ? (
+          <span
+            aria-label={`${friendRequests + incompleteGames} item${friendRequests + incompleteGames === 1 ? "" : "s"} need attention`}
+            className="bg-accent border-background absolute -top-0.5 -right-0.5 size-3.5 rounded-full border-2 shadow-[0_0_0_2px_rgba(199,255,24,0.15)]"
+            role="status"
+          />
+        ) : null}
       </button>
 
       {open ? (
@@ -87,18 +99,33 @@ export function AccountMenu({
           {authenticated ? (
             <>
               <nav aria-label="Account navigation" className="py-1">
-                {links.map((item) => (
-                  <Link
-                    className="hover:bg-accent hover:text-background focus-visible:bg-accent focus-visible:text-background flex min-h-11 items-center gap-3 rounded-[2px] px-3 text-sm font-bold transition-colors outline-none"
-                    href={item.href}
-                    key={item.href}
-                    onClick={() => setOpen(false)}
-                    role="menuitem"
-                  >
-                    <Icon name={item.icon} size={17} />
-                    {item.label}
-                  </Link>
-                ))}
+                {links.map((item) => {
+                  const count =
+                    item.href === "/friends"
+                      ? friendRequests
+                      : item.href === "/games"
+                        ? incompleteGames
+                        : 0;
+                  return (
+                    <Link
+                      className="hover:bg-accent hover:text-background focus-visible:bg-accent focus-visible:text-background flex min-h-11 items-center gap-3 rounded-[2px] px-3 text-sm font-bold transition-colors outline-none"
+                      href={item.href}
+                      key={item.href}
+                      onClick={() => setOpen(false)}
+                      role="menuitem"
+                    >
+                      <Icon name={item.icon} size={17} />
+                      <span className="flex-1">{item.label}</span>
+                      {count > 0 ? (
+                        <span
+                          aria-label={`${count} ${item.label.toLowerCase()} notification${count === 1 ? "" : "s"}`}
+                          className="bg-accent size-2.5 shrink-0 rounded-full"
+                          role="status"
+                        />
+                      ) : null}
+                    </Link>
+                  );
+                })}
               </nav>
               <form
                 action={signOutAction}

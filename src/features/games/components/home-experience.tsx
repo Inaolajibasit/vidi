@@ -5,8 +5,10 @@ import { DeferredPixelBlast } from "@/components/ui/deferred-pixel-blast";
 import { HomeViewTracker } from "@/features/analytics/home-view-tracker";
 import { HomeActionLink } from "@/features/games/components/home-action-link";
 import type { RecentGame } from "@/features/games/home-data";
+import type { AccountAttention } from "@/components/layout/account-attention";
 
 interface HomeExperienceProps {
+  attention: AccountAttention;
   authenticated: boolean;
   profile: { avatarUrl: string | null; displayName: string } | null;
   recentGame: RecentGame | null;
@@ -69,6 +71,7 @@ function RecentGameCard({ game }: { game: RecentGame }) {
 }
 
 export function HomeExperience({
+  attention,
   authenticated,
   profile,
   recentGame,
@@ -99,6 +102,8 @@ export function HomeExperience({
             authenticated={authenticated}
             avatarUrl={profile?.avatarUrl}
             displayName={profile?.displayName}
+            friendRequests={attention.friendRequests}
+            incompleteGames={attention.incompleteGames}
           />
         </header>
 

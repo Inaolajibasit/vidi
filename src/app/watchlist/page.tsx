@@ -2,6 +2,10 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { AccountMenu } from "@/components/layout/account-menu";
+import {
+  EMPTY_ACCOUNT_ATTENTION,
+  getAccountAttention,
+} from "@/components/layout/account-attention";
 import { Icon } from "@/components/ui/icon";
 import {
   manuallyAddWatchlistItemAction,
@@ -60,7 +64,7 @@ function SavedMovie({ item }: { item: SavedItem }) {
             <input name="itemId" type="hidden" value={item.id} />
             <button
               aria-label={`Mark ${item.movie.title} as watched`}
-              className="border-foreground/25 text-muted hover:border-accent hover:bg-accent hover:text-background focus-visible:outline-accent grid size-11 place-items-center rounded-sm border transition-[color,background-color,border-color,transform] active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2"
+              className="border-foreground/25 text-muted hover:border-accent hover:bg-accent hover:text-background focus-visible:outline-accent grid size-11 place-items-center rounded-sm border transition-[color,background-color,border-color,transform] focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95"
               title="Mark watched"
               type="submit"
             >
@@ -72,7 +76,7 @@ function SavedMovie({ item }: { item: SavedItem }) {
           <input name="itemId" type="hidden" value={item.id} />
           <button
             aria-label={`Remove ${item.movie.title} from watchlist`}
-            className="border-foreground/25 text-muted hover:border-purple hover:bg-purple hover:text-foreground focus-visible:outline-purple grid size-11 place-items-center rounded-sm border transition-[color,background-color,border-color,transform] active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="border-foreground/25 text-muted hover:border-purple hover:bg-purple hover:text-foreground focus-visible:outline-purple grid size-11 place-items-center rounded-sm border transition-[color,background-color,border-color,transform] focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95"
             title="Remove"
             type="submit"
           >
@@ -99,13 +103,18 @@ export default async function WatchlistPage({
   const query = params.q?.trim().slice(0, 80) ?? "";
   const admin = getSupabaseAdmin();
 
-  const { data: lists } = user
-    ? await admin
-        .from("watchlists")
-        .select("id, kind, name, participant_names, source_game_id, updated_at")
-        .eq("profile_id", user.id)
-        .order("updated_at", { ascending: false })
-    : { data: [] };
+  const [{ data: lists }, attention] = user
+    ? await Promise.all([
+        admin
+          .from("watchlists")
+          .select(
+            "id, kind, name, participant_names, source_game_id, updated_at",
+          )
+          .eq("profile_id", user.id)
+          .order("updated_at", { ascending: false }),
+        getAccountAttention(user.id),
+      ])
+    : [{ data: [] }, EMPTY_ACCOUNT_ATTENTION];
   const listIds = (lists ?? []).map((list) => list.id);
   const { data: rawItems } = listIds.length
     ? await admin
@@ -121,7 +130,9 @@ export default async function WatchlistPage({
         .select("id, poster_path, release_year, title")
         .in("id", movieIds)
     : { data: [] };
-  const movieMap = new Map((savedMovies ?? []).map((movie) => [movie.id, movie]));
+  const movieMap = new Map(
+    (savedMovies ?? []).map((movie) => [movie.id, movie]),
+  );
   const itemsByList = new Map<string, SavedItem[]>();
   for (const item of rawItems ?? []) {
     const movie = movieMap.get(item.movie_id);
@@ -171,6 +182,8 @@ export default async function WatchlistPage({
             authenticated={Boolean(user)}
             avatarUrl={avatarUrl}
             displayName={displayName}
+            friendRequests={attention.friendRequests}
+            incompleteGames={attention.incompleteGames}
           />
         </header>
 
@@ -182,7 +195,10 @@ export default async function WatchlistPage({
           </h1>
         </section>
 
-        <nav aria-label="Watchlist sections" className="border-foreground/20 grid grid-cols-2 border-y">
+        <nav
+          aria-label="Watchlist sections"
+          className="border-foreground/20 grid grid-cols-2 border-y"
+        >
           <Link
             aria-current={activeTab === "my" ? "page" : undefined}
             className={`min-h-14 content-center text-center text-xs font-extrabold uppercase ${activeTab === "my" ? "bg-accent text-background" : "text-muted"}`}
@@ -201,9 +217,12 @@ export default async function WatchlistPage({
 
         {!user ? (
           <section className="border-foreground/20 mt-10 border-y py-10">
-            <h2 className="font-editorial text-3xl uppercase">Keep the picks.</h2>
+            <h2 className="font-editorial text-3xl uppercase">
+              Keep the picks.
+            </h2>
             <p className="text-muted mt-3 max-w-sm text-sm leading-relaxed">
-              Sign up to keep one personal watchlist and save shared lists from every game.
+              Sign up to keep one personal watchlist and save shared lists from
+              every game.
             </p>
             <Link
               className="bg-accent text-background mt-7 flex min-h-12 items-center justify-center rounded-sm text-xs font-extrabold uppercase"
@@ -218,19 +237,23 @@ export default async function WatchlistPage({
               <div className="flex items-end justify-between gap-4">
                 <div>
                   <p className="text-label text-muted">Your permanent list</p>
-                  <h2 className="font-editorial mt-2 text-4xl uppercase">My watchlist</h2>
+                  <h2 className="font-editorial mt-2 text-4xl uppercase">
+                    My watchlist
+                  </h2>
                 </div>
                 <span className="text-accent text-sm font-bold">
                   {(personal && itemsByList.get(personal.id)?.length) ?? 0}
                 </span>
               </div>
-              <div className="mt-6 border-t border-foreground/20">
+              <div className="border-foreground/20 mt-6 border-t">
                 {personal && itemsByList.get(personal.id)?.length ? (
                   itemsByList
                     .get(personal.id)!
                     .map((item) => <SavedMovie item={item} key={item.id} />)
                 ) : (
-                  <p className="text-muted py-10 text-sm">Nothing saved yet. Your restraint is noted.</p>
+                  <p className="text-muted py-10 text-sm">
+                    Nothing saved yet. Your restraint is noted.
+                  </p>
                 )}
               </div>
             </section>
@@ -239,7 +262,9 @@ export default async function WatchlistPage({
               <p className="text-label text-purple">Add a movie</p>
               <form className="mt-4 flex gap-2" role="search">
                 <input name="tab" type="hidden" value="my" />
-                <label className="sr-only" htmlFor="movie-search">Search movies</label>
+                <label className="sr-only" htmlFor="movie-search">
+                  Search movies
+                </label>
                 <input
                   className="border-border bg-surface focus:border-accent min-h-12 min-w-0 flex-1 rounded-sm border px-4 outline-none"
                   defaultValue={query}
@@ -247,7 +272,10 @@ export default async function WatchlistPage({
                   name="q"
                   placeholder="Search a movie"
                 />
-                <button className="bg-accent text-background min-h-12 rounded-sm px-5 text-xs font-extrabold uppercase" type="submit">
+                <button
+                  className="bg-accent text-background min-h-12 rounded-sm px-5 text-xs font-extrabold uppercase"
+                  type="submit"
+                >
                   Search
                 </button>
               </form>
@@ -259,12 +287,21 @@ export default async function WatchlistPage({
                     key={movie.id}
                   >
                     <input name="movieId" type="hidden" value={movie.id} />
-                    <span className="min-w-0 truncate pr-4 text-sm font-bold">{movie.title}</span>
-                    <button className="text-accent min-h-11 shrink-0 text-xs font-extrabold uppercase" type="submit">+ Add</button>
+                    <span className="min-w-0 truncate pr-4 text-sm font-bold">
+                      {movie.title}
+                    </span>
+                    <button
+                      className="text-accent min-h-11 shrink-0 text-xs font-extrabold uppercase"
+                      type="submit"
+                    >
+                      + Add
+                    </button>
                   </form>
                 ))}
                 {query.length >= 2 && !searchResults?.length ? (
-                  <p className="text-muted py-8 text-sm">No cached movies found.</p>
+                  <p className="text-muted py-8 text-sm">
+                    No cached movies found.
+                  </p>
                 ) : null}
               </div>
             </section>
@@ -272,7 +309,9 @@ export default async function WatchlistPage({
         ) : (
           <section className="pt-10">
             <p className="text-label text-muted">Saved from completed games</p>
-            <h2 className="font-editorial mt-2 text-4xl uppercase">Our watchlists</h2>
+            <h2 className="font-editorial mt-2 text-4xl uppercase">
+              Our watchlists
+            </h2>
             <div className="mt-8 grid gap-12">
               {shared.length ? (
                 shared.map((list) => (
@@ -285,7 +324,7 @@ export default async function WatchlistPage({
                         {itemsByList.get(list.id)?.length ?? 0} movies
                       </p>
                     </div>
-                    <div className="mt-5 border-t border-foreground/20">
+                    <div className="border-foreground/20 mt-5 border-t">
                       {(itemsByList.get(list.id) ?? []).map((item) => (
                         <SavedMovie item={item} key={item.id} />
                       ))}
@@ -295,8 +334,12 @@ export default async function WatchlistPage({
               ) : (
                 <div className="border-foreground/20 border-y py-10">
                   <Icon className="text-purple" name="users" size={24} />
-                  <p className="font-editorial mt-4 text-3xl uppercase">No shared lists yet.</p>
-                  <p className="text-muted mt-3 text-sm">Finish a game and save “Our watchlist” from the verdict.</p>
+                  <p className="font-editorial mt-4 text-3xl uppercase">
+                    No shared lists yet.
+                  </p>
+                  <p className="text-muted mt-3 text-sm">
+                    Finish a game and save “Our watchlist” from the verdict.
+                  </p>
                 </div>
               )}
             </div>

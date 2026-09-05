@@ -1,5 +1,10 @@
 import "server-only";
 
+import {
+  EMPTY_ACCOUNT_ATTENTION,
+  getAccountAttention,
+  type AccountAttention,
+} from "@/components/layout/account-attention";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { GameMode, GameStatus } from "@/types/database";
 
@@ -11,6 +16,7 @@ export interface RecentGame {
 }
 
 export interface HomeData {
+  attention: AccountAttention;
   authenticated: boolean;
   profile: { avatarUrl: string | null; displayName: string } | null;
   recentGame: RecentGame | null;
@@ -20,15 +26,25 @@ export async function getHomeData(): Promise<HomeData> {
   const supabase = await createSupabaseServerClient();
 
   if (!supabase)
-    return { authenticated: false, profile: null, recentGame: null };
+    return {
+      attention: EMPTY_ACCOUNT_ATTENTION,
+      authenticated: false,
+      profile: null,
+      recentGame: null,
+    };
 
   const { data: authData } = await supabase.auth.getUser();
   const user = authData.user;
 
   if (!user)
-    return { authenticated: false, profile: null, recentGame: null };
+    return {
+      attention: EMPTY_ACCOUNT_ATTENTION,
+      authenticated: false,
+      profile: null,
+      recentGame: null,
+    };
 
-  const [{ data: profile }, { data: player }] = await Promise.all([
+  const [{ data: profile }, { data: player }, attention] = await Promise.all([
     supabase
       .from("profiles")
       .select("avatar_url, display_name")
@@ -41,6 +57,7 @@ export async function getHomeData(): Promise<HomeData> {
       .order("joined_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
+    getAccountAttention(user.id),
   ]);
 
   const account = {
@@ -57,7 +74,12 @@ export async function getHomeData(): Promise<HomeData> {
   };
 
   if (!player)
-    return { authenticated: true, profile: account, recentGame: null };
+    return {
+      attention,
+      authenticated: true,
+      profile: account,
+      recentGame: null,
+    };
 
   const { data: game } = await supabase
     .from("games")
@@ -66,6 +88,7 @@ export async function getHomeData(): Promise<HomeData> {
     .maybeSingle();
 
   return {
+    attention,
     authenticated: true,
     profile: account,
     recentGame: game

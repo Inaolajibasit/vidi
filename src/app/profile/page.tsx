@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AccountMenu } from "@/components/layout/account-menu";
+import { getAccountAttention } from "@/components/layout/account-attention";
 import { Avatar } from "@/components/ui/avatar";
 import { updateProfileAction } from "@/features/profiles/actions";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -13,13 +14,14 @@ export default async function ProfilePage() {
     : { data: { user: null } };
   if (!data.user) redirect("/auth?next=/profile");
   const admin = getSupabaseAdmin();
-  const [{ data: profile }, { data: players }] = await Promise.all([
+  const [{ data: profile }, { data: players }, attention] = await Promise.all([
     admin.from("profiles").select("*").eq("id", data.user.id).single(),
     admin
       .from("game_players")
       .select("id, game_id, joined_at")
       .eq("profile_id", data.user.id)
       .order("joined_at", { ascending: false }),
+    getAccountAttention(data.user.id),
   ]);
   if (!profile) return null;
   const avatarUrl =
@@ -73,6 +75,8 @@ export default async function ProfilePage() {
         <AccountMenu
           avatarUrl={avatarUrl}
           displayName={profile.display_name}
+          friendRequests={attention.friendRequests}
+          incompleteGames={attention.incompleteGames}
         />
       </header>
       <section className="py-14">

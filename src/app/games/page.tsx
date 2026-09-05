@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AccountMenu } from "@/components/layout/account-menu";
+import { getAccountAttention } from "@/components/layout/account-attention";
 import { AvatarGroup } from "@/components/ui/avatar-group";
 import { Icon } from "@/components/ui/icon";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -22,7 +23,10 @@ const statusLabels = {
   waiting_results: "Calculating results",
 } as const;
 
-function gameHref(game: { invite_code: string; status: keyof typeof statusLabels }) {
+function gameHref(game: {
+  invite_code: string;
+  status: keyof typeof statusLabels;
+}) {
   if (game.status === "completed" || game.status === "waiting_results") {
     return `/results/${game.invite_code}`;
   }
@@ -43,7 +47,7 @@ export default async function GamesPage() {
 
   if (!authData.user || !client) redirect("/auth?next=/games");
 
-  const [{ data: profile }, { data: players }] = await Promise.all([
+  const [{ data: profile }, { data: players }, attention] = await Promise.all([
     client
       .from("profiles")
       .select("avatar_url, display_name")
@@ -54,6 +58,7 @@ export default async function GamesPage() {
       .select("game_id, joined_at, progress")
       .eq("profile_id", authData.user.id)
       .order("joined_at", { ascending: false }),
+    getAccountAttention(authData.user.id),
   ]);
 
   const gameIds = (players ?? []).map((player) => player.game_id);
@@ -126,6 +131,8 @@ export default async function GamesPage() {
               null
             }
             displayName={displayName}
+            friendRequests={attention.friendRequests}
+            incompleteGames={attention.incompleteGames}
           />
         </header>
 
