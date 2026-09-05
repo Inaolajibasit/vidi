@@ -24,6 +24,7 @@ import {
 import { createPortal } from "react-dom";
 
 import { ProgressBar } from "@/components/ui/progress-bar";
+import Stack, { type StackDirection } from "@/components/ui/Stack";
 import {
   ensureGameResultsAction,
   recordAnswerAction,
@@ -59,7 +60,6 @@ const REACTIONS: Array<{
   { emoji: "🤔", label: "Can't remember", value: "cant_remember" },
 ];
 
-type Direction = -1 | 1;
 type SyncState = "offline" | "saved" | "syncing";
 
 function ReactionIcon({ name }: { name: MovieReaction }) {
@@ -126,7 +126,6 @@ export function SwipeGame({ game }: { game: GameplayData }) {
   const reduceMotion = useReducedMotion();
   const [currentIndex, setCurrentIndex] = useState(game.currentIndex);
   const [reactionPending, setReactionPending] = useState(game.reactionPending);
-  const [direction, setDirection] = useState<Direction>(1);
   const [comment, setComment] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [queuedCount, setQueuedCount] = useState(0);
@@ -150,17 +149,14 @@ export function SwipeGame({ game }: { game: GameplayData }) {
   const reactionRects = useRef<
     Array<{ reaction: MovieReaction; rect: DOMRect }>
   >([]);
+  const committedReaction = useRef<MovieReaction | null>(null);
   const gestureX = useMotionValue(0);
   const unseenBackground = useTransform(
     gestureX,
     [-180, -30, 0],
     [0.36, 0.035, 0],
   );
-  const seenBackground = useTransform(
-    gestureX,
-    [0, 30, 180],
-    [0, 0.035, 0.32],
-  );
+  const seenBackground = useTransform(gestureX, [0, 30, 180], [0, 0.035, 0.32]);
   const dockOpacity = useTransform(gestureX, [8, 30, 90], [0, 0.82, 1]);
   const currentMovie = game.movies[currentIndex];
   const complete = game.complete || currentIndex >= game.movies.length;
@@ -422,14 +418,12 @@ export function SwipeGame({ game }: { game: GameplayData }) {
   function answerUnseen() {
     if (!currentMovie || reactionPending) return;
     if (!reduceMotion) triggerTactileFeedback(7);
-    setDirection(-1);
     advance(currentMovie, false, null);
   }
 
   function answerSeen() {
     if (!currentMovie || reactionPending) return;
     if (!reduceMotion) triggerTactileFeedback(7);
-    setDirection(1);
     persist(currentMovie, true, null);
     setReactionPending(true);
   }
@@ -437,7 +431,6 @@ export function SwipeGame({ game }: { game: GameplayData }) {
   function answerReaction(reaction: MovieReaction) {
     if (!currentMovie || !reactionPending) return;
     if (!reduceMotion) triggerTactileFeedback(9);
-    setDirection(1);
     advance(currentMovie, true, reaction);
   }
 
@@ -467,10 +460,7 @@ export function SwipeGame({ game }: { game: GameplayData }) {
     );
   }
 
-  function handleDrag(
-    _: MouseEvent | TouchEvent | PointerEvent,
-    info: PanInfo,
-  ) {
+  function handleDrag(info: PanInfo) {
     gestureX.set(info.offset.x);
     const movingRight = info.offset.x > 18;
     setDraggingRight(movingRight);
@@ -479,24 +469,28 @@ export function SwipeGame({ game }: { game: GameplayData }) {
     );
   }
 
-  function handleDragEnd(
-    _: MouseEvent | TouchEvent | PointerEvent,
-    info: PanInfo,
-  ) {
+  function handleDragEnd(info: PanInfo) {
     const selectedReaction =
       info.offset.x >= 54 ? reactionAtPoint(info.point) : null;
+    committedReaction.current = selectedReaction;
     gestureX.set(0);
     reactionRects.current = [];
     setDraggingRight(false);
     setHoveredReaction(null);
+  }
 
-    if (!shouldCommitSwipe(info.offset.x, info.velocity.x)) return;
-    if (info.offset.x < 0) answerUnseen();
-    else if (selectedReaction && currentMovie) {
+  function handleStackSwipe(stackDirection: StackDirection, info: PanInfo) {
+    if (
+      !shouldCommitSwipe(info.offset.x, info.velocity.x) &&
+      Math.abs(info.offset.x + info.velocity.x * 0.12) < SWIPE_DISTANCE * 1.35
+    )
+      return;
+    if (stackDirection === "left") answerUnseen();
+    else if (committedReaction.current && currentMovie) {
       if (!reduceMotion) triggerTactileFeedback(9);
-      setDirection(1);
-      advance(currentMovie, true, selectedReaction);
+      advance(currentMovie, true, committedReaction.current);
     } else answerSeen();
+    committedReaction.current = null;
   }
 
   if (complete || !currentMovie) {
@@ -555,7 +549,7 @@ export function SwipeGame({ game }: { game: GameplayData }) {
   const progress = (currentIndex / game.movies.length) * 100;
 
   return (
-    <main className="font-ui bg-background relative h-dvh overflow-hidden overscroll-none [touch-action:pan-x_pinch-zoom]">
+    <main className="font-ui bg-background relative h-dvh [touch-action:pan-x_pinch-zoom] overflow-hidden overscroll-none">
       <motion.div
         aria-hidden="true"
         className="bg-danger pointer-events-none fixed inset-0"
@@ -613,19 +607,29 @@ export function SwipeGame({ game }: { game: GameplayData }) {
             pending={reactionPending}
             ref={reactionDock}
           />
-          <AnimatePresence initial={false} custom={direction} mode="popLayout">
-            <MovieSwipeCard
-              direction={direction}
-              key={currentMovie.tmdbId}
-              movie={currentMovie}
-              onDrag={handleDrag}
-              onDragEnd={handleDragEnd}
-              onDragStart={handleDragStart}
-              priority={currentIndex === game.currentIndex}
-              reactionPending={reactionPending}
-              reduceMotion={Boolean(reduceMotion)}
-            />
-          </AnimatePresence>
+          <Stack
+            cards={game.movies
+              .slice(currentIndex, currentIndex + 3)
+              .map((movie, index) => ({
+                id: movie.tmdbId,
+                content: (
+                  <MovieCardContent
+                    gestureX={index === 0 ? gestureX : undefined}
+                    movie={movie}
+                    priority={index === 0 && currentIndex === game.currentIndex}
+                  />
+                ),
+              }))}
+            className="relative mx-auto w-full flex-1"
+            disabled={reactionPending}
+            onDrag={handleDrag}
+            onDragEnd={handleDragEnd}
+            onDragStart={handleDragStart}
+            onSwipe={handleStackSwipe}
+            reducedMotion={Boolean(reduceMotion)}
+            sensitivity={SWIPE_DISTANCE}
+            velocityThreshold={FLICK_VELOCITY}
+          />
 
           <AnimatePresence>
             {comment ? (
@@ -778,30 +782,20 @@ const ReactionDock = forwardRef<HTMLDivElement, ReactionDockProps>(
   },
 );
 
-interface MovieSwipeCardProps {
-  direction: Direction;
+interface MovieCardContentProps {
+  gestureX?: MotionValue<number>;
   movie: GameplayMovie;
-  onDrag: (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => void;
-  onDragEnd: (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => void;
-  onDragStart: () => void;
   priority: boolean;
-  reactionPending: boolean;
-  reduceMotion: boolean;
 }
 
-function MovieSwipeCard({
-  direction,
+function MovieCardContent({
+  gestureX: sharedX,
   movie,
-  onDrag,
-  onDragEnd,
-  onDragStart,
   priority,
-  reactionPending,
-  reduceMotion,
-}: MovieSwipeCardProps) {
+}: MovieCardContentProps) {
   const [posterFailed, setPosterFailed] = useState(false);
-  const x = useMotionValue(0);
-  const rotate = useTransform(x, [-240, 0, 240], [-9, 0, 9]);
+  const fallbackX = useMotionValue(0);
+  const x = sharedX ?? fallbackX;
   const unseenOpacity = useTransform(x, [-104, -28, 0], [1, 0.12, 0]);
   const seenOpacity = useTransform(x, [0, 28, 104], [0, 0.12, 1]);
   const unseenWash = useTransform(x, [-180, -32, 0], [0.3, 0.03, 0]);
@@ -812,37 +806,7 @@ function MovieSwipeCard({
   const seenLabelX = useTransform(x, [0, 104], [8, 0]);
 
   return (
-    <motion.article
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      className="border-border bg-surface relative z-10 mx-auto w-full touch-none overflow-hidden rounded-sm border shadow-2xl shadow-black/40 will-change-transform"
-      custom={direction}
-      drag={reactionPending ? false : "x"}
-      dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={0.48}
-      dragMomentum={false}
-      dragTransition={{ bounceDamping: 38, bounceStiffness: 620 }}
-      exit={
-        reduceMotion
-          ? { opacity: 0 }
-          : {
-              opacity: 0,
-              rotate: direction * 10,
-              scale: 0.965,
-              x: direction * 520,
-            }
-      }
-      initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.975, y: 10 }}
-      onDrag={onDrag}
-      onDragEnd={onDragEnd}
-      onDragStart={onDragStart}
-      style={{ rotate, x }}
-      transition={
-        reduceMotion
-          ? { duration: 0 }
-          : { duration: 0.24, ease: [0.22, 0.78, 0.18, 1] }
-      }
-      whileDrag={{ cursor: "grabbing", scale: 0.99 }}
-    >
+    <article className="border-border bg-surface relative h-full w-full touch-none overflow-hidden rounded-sm border shadow-2xl shadow-black/40">
       <div className="bg-surface-strong relative h-[clamp(16rem,52dvh,34rem)] w-full shrink-0">
         {movie.posterUrl && !posterFailed ? (
           <Image
@@ -902,6 +866,6 @@ function MovieSwipeCard({
           <span className="block">{movie.genre}</span>
         </p>
       </div>
-    </motion.article>
+    </article>
   );
 }
