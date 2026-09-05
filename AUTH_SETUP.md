@@ -262,3 +262,6 @@ All four commands should succeed before deployment.
 - **Google redirect mismatch:** fix the Google OAuth redirect URI using Supabase's provider callback, not the app callback.
 - **Guest history missing:** confirm authentication occurred in the same browser with the original guest cookie and that the account migration was applied.
 - **Mobile callback fails:** add the exact LAN URL to Supabase redirects and ensure the phone can still reach the development server.
+
+
+
