@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { AccountMenu } from "@/components/layout/account-menu";
 import { getAccountAttention } from "@/components/layout/account-attention";
+import { AttentionSeenMarker } from "@/components/layout/attention-seen-marker";
 import { AvatarGroup } from "@/components/ui/avatar-group";
 import { Icon } from "@/components/ui/icon";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -118,6 +119,7 @@ export default async function GamesPage() {
 
   return (
     <main className="editorial-screen font-ui bg-background min-h-dvh">
+      <AttentionSeenMarker entityIds={gameIds} kind="game" />
       <div className="mx-auto w-full max-w-xl px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-16 sm:px-8">
         <header className="flex items-center justify-between">
           <Link className="font-accent text-accent text-2xl" href="/">

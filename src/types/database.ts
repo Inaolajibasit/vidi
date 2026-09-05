@@ -31,7 +31,12 @@ export type ChallengeInsert = Pick<
   ChallengeRow,
   "code" | "creator_profile_id" | "source_game_id" | "source_player_id"
 > &
-  Partial<Omit<ChallengeRow, "code" | "creator_profile_id" | "source_game_id" | "source_player_id">>;
+  Partial<
+    Omit<
+      ChallengeRow,
+      "code" | "creator_profile_id" | "source_game_id" | "source_player_id"
+    >
+  >;
 
 export interface ChallengeAttemptRow {
   challenge_id: string;
@@ -43,7 +48,10 @@ export interface ChallengeAttemptRow {
   started_at: string;
 }
 
-export type ChallengeAttemptInsert = Pick<ChallengeAttemptRow, "challenge_id" | "game_id"> &
+export type ChallengeAttemptInsert = Pick<
+  ChallengeAttemptRow,
+  "challenge_id" | "game_id"
+> &
   Partial<Omit<ChallengeAttemptRow, "challenge_id" | "game_id">>;
 
 export interface ChallengeEventRow {
@@ -56,9 +64,25 @@ export interface ChallengeEventRow {
   profile_id: string | null;
 }
 
-export type ChallengeEventInsert = Pick<ChallengeEventRow, "challenge_id" | "event_type"> &
+export type ChallengeEventInsert = Pick<
+  ChallengeEventRow,
+  "challenge_id" | "event_type"
+> &
   Partial<Omit<ChallengeEventRow, "challenge_id" | "event_type">>;
 export type FriendshipStatus = "pending" | "accepted" | "blocked";
+
+export interface AccountAttentionReadRow {
+  entity_id: string;
+  kind: "friend_request" | "game";
+  profile_id: string;
+  seen_at: string;
+}
+
+export type AccountAttentionReadInsert = Pick<
+  AccountAttentionReadRow,
+  "entity_id" | "kind" | "profile_id"
+> &
+  Partial<Pick<AccountAttentionReadRow, "seen_at">>;
 
 type TableDefinition<Row, Insert = Partial<Row>, Update = Partial<Insert>> = {
   Row: Row & Record<string, unknown>;
@@ -308,8 +332,18 @@ export type CompatibilityResultInsert = Pick<
 export interface Database {
   public: {
     Tables: {
-      challenge_attempts: TableDefinition<ChallengeAttemptRow, ChallengeAttemptInsert>;
-      challenge_events: TableDefinition<ChallengeEventRow, ChallengeEventInsert>;
+      account_attention_reads: TableDefinition<
+        AccountAttentionReadRow,
+        AccountAttentionReadInsert
+      >;
+      challenge_attempts: TableDefinition<
+        ChallengeAttemptRow,
+        ChallengeAttemptInsert
+      >;
+      challenge_events: TableDefinition<
+        ChallengeEventRow,
+        ChallengeEventInsert
+      >;
       challenges: TableDefinition<ChallengeRow, ChallengeInsert>;
       compatibility_results: TableDefinition<
         CompatibilityResultRow,
