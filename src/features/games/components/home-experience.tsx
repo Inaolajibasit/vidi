@@ -77,7 +77,7 @@ export function HomeExperience({
   recentGame,
 }: HomeExperienceProps) {
   return (
-    <main className="font-ui bg-background relative min-h-dvh overflow-hidden [--accent-personality-soft:#111469] [--accent-personality:#2227F7] [--action-primary-hover:#ffe05c] [--action-primary:#FFD628] [--focus-ring:#FFD628]">
+    <main className="font-ui bg-background relative min-h-dvh overflow-x-hidden [--accent-personality-soft:#111469] [--accent-personality:#2227F7] [--action-primary-hover:#ffe05c] [--action-primary:#FFD628] [--focus-ring:#FFD628]">
       <div
         aria-hidden="true"
         className="absolute inset-0 bg-[radial-gradient(circle,rgba(34,39,247,0.55)_0_1px,transparent_1.5px)] [mask-image:linear-gradient(to_bottom,black_0%,black_72%,transparent_100%)] [background-size:17px_17px] opacity-45"
@@ -89,7 +89,7 @@ export function HomeExperience({
         className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,#090909_0%,transparent_45%,#090909_100%)] opacity-80"
       />
 
-      <div className="relative mx-auto flex min-h-dvh w-full max-w-[38rem] flex-col px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-8 sm:px-8 md:justify-center md:py-14">
+      <div className="relative mx-auto flex min-h-dvh w-full max-w-[38rem] flex-col px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] sm:px-8 md:justify-center md:py-14">
         <header className="vidi-enter relative z-50 flex items-center justify-between md:absolute md:inset-x-8 md:top-8">
           <Link
             aria-label="vidi home"

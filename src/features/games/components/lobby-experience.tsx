@@ -9,6 +9,7 @@ import { useFormStatus } from "react-dom";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { StatusAction, StatusState } from "@/components/ui/status-state";
 import { InviteActions } from "@/features/games/components/share-invite-button";
 import { JoinLobbyForm } from "@/features/games/components/join-lobby-form";
 import {
@@ -139,7 +140,7 @@ export function LobbyExperience({ lobby }: { lobby: LobbyData }) {
       <LobbyShell inviteCode={lobby.inviteCode}>
         <div className="py-12">
           <p className="text-label text-purple mb-4">You’re invited</p>
-          <h1 className="font-display text-[clamp(4rem,19vw,7rem)] leading-[0.8] font-extrabold tracking-[-0.055em] uppercase">
+          <h1 className="font-display text-[clamp(3.5rem,19vw,7rem)] leading-[0.8] font-extrabold tracking-[-0.055em] uppercase">
             Join the
             <span className="text-accent block">people.</span>
           </h1>
@@ -153,21 +154,40 @@ export function LobbyExperience({ lobby }: { lobby: LobbyData }) {
             </p>
           </div>
           {unavailable ? (
-            <div className="border-border bg-surface rounded-md border p-5 text-center">
-              <p className="font-bold">
-                {lobby.status === "expired"
-                  ? "This game has expired."
-                  : lobby.status !== "waiting"
-                    ? "This game has already started."
-                    : "This room is full."}
-              </p>
-              <Link
-                className="text-accent mt-4 inline-block text-sm font-bold"
-                href="/"
-              >
-                Back home
-              </Link>
-            </div>
+            <StatusState
+              action={
+                <StatusAction href="/games/new">Create a game</StatusAction>
+              }
+              className="border-border border-y py-8"
+              description={
+                lobby.status === "expired"
+                  ? "This invite has expired. Start a new room to keep playing."
+                  : lobby.status === "completed"
+                    ? "This game has finished. Only its players can open the results."
+                    : lobby.status !== "waiting"
+                      ? "The host has already started this game. Create a new room or ask for another invite."
+                      : "This room has reached its player limit. Start another room to play."
+              }
+              eyebrow={
+                lobby.status === "expired"
+                  ? "Expired room"
+                  : lobby.status === "completed"
+                    ? "Game completed"
+                    : lobby.status !== "waiting"
+                      ? "Game in progress"
+                      : "Room full"
+              }
+              title={
+                lobby.status === "expired"
+                  ? "This invite has ended."
+                  : lobby.status === "completed"
+                    ? "The verdict is in."
+                    : lobby.status !== "waiting"
+                      ? "You missed the start."
+                      : "No seats left."
+              }
+              tone="purple"
+            />
           ) : (
             <JoinLobbyForm
               authenticated={lobby.authenticated}
@@ -194,7 +214,7 @@ export function LobbyExperience({ lobby }: { lobby: LobbyData }) {
               {connectionState}
             </span>
           </div>
-          <h1 className="font-display text-[clamp(4rem,19vw,7rem)] leading-[0.8] font-extrabold tracking-[-0.055em] uppercase">
+          <h1 className="font-display text-[clamp(3.5rem,19vw,7rem)] leading-[0.8] font-extrabold tracking-[-0.055em] uppercase">
             Bring the
             <span className="text-accent block">people.</span>
           </h1>
@@ -273,6 +293,25 @@ export function LobbyExperience({ lobby }: { lobby: LobbyData }) {
             </AnimatePresence>
           </ul>
         </section>
+
+        {connectionState !== "Live" ? (
+          <div
+            aria-live="polite"
+            className="border-purple/50 bg-purple/10 mt-6 border-l-2 px-4 py-3"
+            role="status"
+          >
+            <p className="text-sm font-bold">
+              {connectionState === "Offline"
+                ? "Live updates are unavailable."
+                : "Connection interrupted."}
+            </p>
+            <p className="text-muted mt-1 text-xs leading-5">
+              {connectionState === "Offline"
+                ? "Refresh the page after checking your connection."
+                : "Reconnecting automatically. You can stay on this screen."}
+            </p>
+          </div>
+        ) : null}
 
         {lobby.status === "waiting" ? <WaitingAnimation /> : null}
 

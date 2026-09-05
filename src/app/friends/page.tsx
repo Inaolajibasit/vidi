@@ -106,7 +106,7 @@ export default async function FriendsPage() {
             </ul>
           ) : (
             <p className="text-muted py-5 text-sm leading-6">
-              No friends yet. Add someone who can defend their movie taste.
+              No friends yet. Search by username above to send a request.
             </p>
           )}
         </section>

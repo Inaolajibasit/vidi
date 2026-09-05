@@ -29,7 +29,9 @@ export async function getLobbyData(
 ): Promise<LobbyData | null> {
   const parsedCode = inviteCodeSchema.safeParse(rawInviteCode);
   if (!parsedCode.success) return null;
-  if (!(await consumeRateLimit("lobby_read", 120, 3_600))) return null;
+  if (!(await consumeRateLimit("lobby_read", 120, 3_600))) {
+    throw new Error("Lobby lookup is temporarily unavailable.");
+  }
 
   try {
     const admin = getSupabaseAdmin();
@@ -97,6 +99,6 @@ export async function getLobbyData(
     };
   } catch (error) {
     console.error("Lobby lookup failed", error);
-    return null;
+    throw error;
   }
 }

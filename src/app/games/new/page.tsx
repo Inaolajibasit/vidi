@@ -39,7 +39,7 @@ export default async function CreateGamePage({
 
   return (
     <main className="editorial-screen font-ui bg-background min-h-dvh">
-      <div className="mx-auto w-full max-w-3xl px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-16 sm:px-8 md:py-14">
+      <div className="mx-auto w-full max-w-3xl px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(4rem,env(safe-area-inset-bottom))] sm:px-8 md:py-14">
         <header className="mb-12 flex items-center justify-between md:mb-16">
           <Link
             aria-label="Back to home"
@@ -55,7 +55,7 @@ export default async function CreateGamePage({
 
         <section className="mb-12 md:mb-16">
           <p className="text-label text-purple mb-4">New game</p>
-          <h1 className="font-display text-[clamp(4rem,18vw,7.5rem)] leading-[0.78] font-normal tracking-[-0.04em] uppercase">
+          <h1 className="font-display text-[clamp(3.5rem,18vw,7.5rem)] leading-[0.78] font-normal tracking-[-0.04em] uppercase">
             Make your
             <span className="text-accent block">vidi.</span>
           </h1>

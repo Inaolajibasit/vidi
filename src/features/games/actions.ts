@@ -98,11 +98,20 @@ export async function createGameAction(
     }
     const { data: movies, error: movieError } = movieResponse;
 
-    if (movieError) throw movieError;
+    if (movieError) {
+      if (isTransportFailure(movieError)) {
+        return {
+          message:
+            "The movie library couldn't load. Check your connection and try again.",
+        };
+      }
+      throw movieError;
+    }
 
     if (!movies || movies.length < movieCount) {
       return {
-        message: `The movie library has ${movies?.length ?? 0} movies. Sync at least ${movieCount} before creating this mode.`,
+        message:
+          "The movie library is temporarily unavailable. Try again shortly or choose a shorter game.",
       };
     }
 
@@ -189,8 +198,7 @@ export async function createGameAction(
   } catch (error) {
     console.error("Game creation failed", error);
     return {
-      message:
-        "We couldn’t create the game. Check the Supabase migration and try again.",
+      message: "We couldn't create the game. Try again in a moment.",
     };
   }
 

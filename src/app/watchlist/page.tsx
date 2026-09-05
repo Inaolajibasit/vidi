@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import { AccountMenu } from "@/components/layout/account-menu";
@@ -7,6 +6,7 @@ import {
   getAccountAttention,
 } from "@/components/layout/account-attention";
 import { Icon } from "@/components/ui/icon";
+import { MoviePoster } from "@/components/ui/movie-poster";
 import {
   manuallyAddWatchlistItemAction,
   markWatchlistItemWatchedAction,
@@ -36,17 +36,12 @@ function SavedMovie({ item }: { item: SavedItem }) {
   const poster = posterSource(item.movie.posterPath);
   return (
     <article className="border-foreground/20 flex items-center gap-4 border-b py-4">
-      <div className="bg-surface-strong relative h-24 w-16 shrink-0 overflow-hidden rounded-sm">
-        {poster ? (
-          <Image
-            alt=""
-            className="object-cover"
-            fill
-            sizes="64px"
-            src={poster}
-          />
-        ) : null}
-      </div>
+      <MoviePoster
+        alt={`${item.movie.title} poster`}
+        className="h-24 w-16 shrink-0 rounded-sm border-0"
+        sizes="64px"
+        src={poster ?? undefined}
+      />
       <div className="min-w-0 flex-1">
         <h3 className="line-clamp-2 font-bold">{item.movie.title}</h3>
         <p className="text-muted mt-1 text-xs">
@@ -251,9 +246,21 @@ export default async function WatchlistPage({
                     .get(personal.id)!
                     .map((item) => <SavedMovie item={item} key={item.id} />)
                 ) : (
-                  <p className="text-muted py-10 text-sm">
-                    Nothing saved yet. Your restraint is noted.
-                  </p>
+                  <div className="py-10">
+                    <p className="font-editorial text-2xl uppercase">
+                      Nothing saved yet.
+                    </p>
+                    <p className="text-muted mt-2 text-sm leading-6">
+                      Finish a game to get personal picks, or search for a movie
+                      below.
+                    </p>
+                    <Link
+                      className="text-accent mt-5 inline-flex min-h-11 items-center text-xs font-extrabold uppercase"
+                      href="/games/new"
+                    >
+                      Create a game →
+                    </Link>
+                  </div>
                 )}
               </div>
             </section>

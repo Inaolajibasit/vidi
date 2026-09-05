@@ -165,6 +165,6 @@ export async function getGameplayData(
     };
   } catch (error) {
     console.error("Gameplay lookup failed", error);
-    return null;
+    throw error;
   }
 }

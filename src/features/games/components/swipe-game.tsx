@@ -121,7 +121,13 @@ function triggerTactileFeedback(pattern: number | number[] = 8) {
   navigator.vibrate(pattern);
 }
 
-export function SwipeGame({ game }: { game: GameplayData }) {
+export function SwipeGame({
+  defaultLikeOnSwipe,
+  game,
+}: {
+  defaultLikeOnSwipe: boolean;
+  game: GameplayData;
+}) {
   const router = useRouter();
   const reduceMotion = useReducedMotion();
   const [currentIndex, setCurrentIndex] = useState(game.currentIndex);
@@ -489,10 +495,10 @@ export function SwipeGame({ game }: { game: GameplayData }) {
     else if (committedReaction.current && currentMovie) {
       if (!reduceMotion) triggerTactileFeedback(9);
       advance(currentMovie, true, committedReaction.current);
-    } else if (currentMovie) {
+    } else if (defaultLikeOnSwipe && currentMovie) {
       if (!reduceMotion) triggerTactileFeedback(9);
       advance(currentMovie, true, "liked");
-    }
+    } else answerSeen();
     committedReaction.current = null;
   }
 
@@ -597,6 +603,17 @@ export function SwipeGame({ game }: { game: GameplayData }) {
           </div>
         </header>
         <ProgressBar className="mb-4" label="" value={progress} />
+
+        {syncState === "offline" ? (
+          <p
+            aria-live="polite"
+            className="border-danger/60 bg-danger/10 mb-3 border-l-2 px-3 py-2 text-xs leading-5"
+            role="status"
+          >
+            Offline. Keep playing—answers will sync when your connection
+            returns.
+          </p>
+        ) : null}
 
         <section
           className="relative flex min-h-0 flex-1 flex-col justify-center"

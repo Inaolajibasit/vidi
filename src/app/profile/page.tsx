@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AccountMenu } from "@/components/layout/account-menu";
 import { getAccountAttention } from "@/components/layout/account-attention";
 import { Avatar } from "@/components/ui/avatar";
+import { StatusAction, StatusScreen } from "@/components/ui/status-state";
 import { updateProfileAction } from "@/features/profiles/actions";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -23,7 +24,17 @@ export default async function ProfilePage() {
       .order("joined_at", { ascending: false }),
     getAccountAttention(data.user.id),
   ]);
-  if (!profile) return null;
+  if (!profile) {
+    return (
+      <StatusScreen
+        action={<StatusAction href="/">Return home</StatusAction>}
+        description="Your account is signed in, but the profile could not be loaded. Try again shortly."
+        eyebrow="Profile unavailable"
+        title="Profile didn't load."
+        tone="danger"
+      />
+    );
+  }
   const avatarUrl =
     profile.avatar_url ??
     data.user.user_metadata.avatar_url ??
@@ -67,7 +78,7 @@ export default async function ProfilePage() {
     : { data: [] };
 
   return (
-    <main className="editorial-screen font-ui page-container min-h-dvh max-w-xl py-10">
+    <main className="editorial-screen font-ui page-container min-h-dvh max-w-xl pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]">
       <header className="flex justify-between">
         <Link className="font-accent text-accent text-2xl" href="/">
           vidi.
@@ -86,7 +97,7 @@ export default async function ProfilePage() {
           size="xl"
           src={avatarUrl ?? undefined}
         />
-        <h1 className="font-display mt-6 text-6xl font-black uppercase">
+        <h1 className="font-display mt-6 text-[clamp(3.25rem,17vw,3.75rem)] leading-[0.9] font-black break-words uppercase">
           {profile.display_name}
         </h1>
         <p className="text-muted mt-2">
@@ -105,7 +116,7 @@ export default async function ProfilePage() {
       </section>
       <section className="border-border border-b pb-10">
         <p className="text-label text-purple">Movie personality</p>
-        <h2 className="font-display mt-3 text-4xl font-black uppercase">
+        <h2 className="font-display mt-3 text-4xl leading-[0.95] font-black break-words uppercase">
           {profile.current_personality?.replaceAll("_", " ") ??
             "Still developing"}
         </h2>

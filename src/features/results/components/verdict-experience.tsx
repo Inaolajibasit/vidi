@@ -1,11 +1,11 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { MoviePoster } from "@/components/ui/movie-poster";
 import { createChallengeAction } from "@/features/challenges/actions";
 import { ShareResultCard } from "@/features/results/components/share-result-card";
 import type {
@@ -60,18 +60,12 @@ function PosterStrip({ movies }: { movies: VerdictMovie[] }) {
     <div className="mt-6 flex gap-3 overflow-x-auto pb-2">
       {movies.slice(0, 8).map((movie) => (
         <figure className="w-28 shrink-0" key={movie.id}>
-          <div className="bg-surface-strong aspect-2/3 overflow-hidden rounded-sm">
-            {movie.posterUrl ? (
-              <Image
-                alt=""
-                className="h-full w-full object-cover"
-                height={252}
-                sizes="112px"
-                src={movie.posterUrl}
-                width={168}
-              />
-            ) : null}
-          </div>
+          <MoviePoster
+            alt={`${movie.title} poster`}
+            className="rounded-sm border-0"
+            sizes="112px"
+            src={movie.posterUrl ?? undefined}
+          />
           <figcaption className="mt-2 line-clamp-2 text-xs font-semibold">
             {movie.title}
           </figcaption>
@@ -178,7 +172,7 @@ export function VerdictExperience({
           <Reveal>
             <div className="py-14">
               <p className="text-label text-purple">Your movie personality</p>
-              <h2 className="font-display text-accent mt-5 text-5xl leading-[0.86] font-black tracking-[-0.05em] uppercase">
+              <h2 className="font-display text-accent mt-5 text-[clamp(2.5rem,13vw,3rem)] leading-[0.86] font-black tracking-[-0.05em] break-words uppercase">
                 {verdict.personality.displayName}
               </h2>
               <p className="text-foreground mt-5 max-w-md text-lg leading-relaxed">
@@ -206,7 +200,7 @@ export function VerdictExperience({
               <p className="text-label text-purple">Biggest disagreement</p>
               {verdict.disagreement ? (
                 <>
-                  <h2 className="font-display mt-5 text-5xl leading-[0.86] font-black tracking-[-0.05em] uppercase">
+                  <h2 className="font-display mt-5 text-[clamp(2.5rem,13vw,3rem)] leading-[0.86] font-black tracking-[-0.05em] break-words uppercase">
                     {verdict.disagreement.movie.title}
                   </h2>
                   <div className="mt-8 grid grid-cols-2 gap-4">
@@ -233,7 +227,7 @@ export function VerdictExperience({
           <Reveal>
             <div className="py-14">
               <p className="text-label text-muted">Who knows movies?</p>
-              <h2 className="font-display text-accent mt-5 text-6xl leading-[0.85] font-black uppercase">
+              <h2 className="font-display text-accent mt-5 text-[clamp(3rem,16vw,3.75rem)] leading-[0.85] font-black break-words uppercase">
                 {verdict.knowledgeWinner ?? "It's a tie"}
               </h2>
             </div>
@@ -312,7 +306,7 @@ export function VerdictExperience({
           <Reveal>
             <section className="border-purple/40 mt-14 border-y py-12 text-center">
               <p className="text-label text-purple">Keep the evidence</p>
-              <h2 className="font-display mt-4 text-5xl font-black uppercase">
+              <h2 className="font-display mt-4 text-[clamp(2.5rem,13vw,3rem)] leading-[0.9] font-black uppercase">
                 Save your movie profile
               </h2>
               <p className="text-muted mt-5">

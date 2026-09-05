@@ -167,7 +167,7 @@ export default async function GamesPage() {
           <section className="border-foreground/20 border-y py-10">
             <p className="font-editorial text-3xl uppercase">No games yet.</p>
             <p className="text-muted mt-3 text-sm">
-              A remarkably clean record. Let&apos;s ruin it.
+              Create a game and invite a friend to start your history.
             </p>
             <Link
               className="bg-accent text-background mt-7 flex min-h-12 items-center justify-center rounded-sm text-xs font-extrabold tracking-[0.08em] uppercase"

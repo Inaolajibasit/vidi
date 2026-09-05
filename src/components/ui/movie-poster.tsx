@@ -1,4 +1,7 @@
+"use client";
+
 import Image from "next/image";
+import { useState } from "react";
 
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
@@ -8,6 +11,7 @@ interface MoviePosterProps {
   badge?: string;
   className?: string;
   priority?: boolean;
+  sizes?: string;
   src?: string;
 }
 
@@ -16,8 +20,11 @@ export function MoviePoster({
   badge,
   className,
   priority,
+  sizes = "(max-width: 640px) 75vw, 320px",
   src,
 }: MoviePosterProps) {
+  const [failed, setFailed] = useState(false);
+
   return (
     <figure
       className={cn(
@@ -25,19 +32,20 @@ export function MoviePoster({
         className,
       )}
     >
-      {src ? (
+      {src && !failed ? (
         <Image
           alt={alt}
           className="object-cover"
           fill
+          onError={() => setFailed(true)}
           priority={priority}
-          sizes="(max-width: 640px) 75vw, 320px"
+          sizes={sizes}
           src={src}
         />
       ) : (
         <div className="grid h-full place-items-center bg-[radial-gradient(circle_at_70%_20%,var(--accent-personality-soft),transparent_38%),linear-gradient(145deg,var(--surface-strong),var(--surface-canvas))]">
           <div className="text-center">
-            <Icon className="text-purple mx-auto mb-3" name="spark" size={28} />
+            <Icon className="text-purple mx-auto mb-2" name="spark" size={24} />
             <span className="text-label text-muted">Poster unavailable</span>
           </div>
         </div>
