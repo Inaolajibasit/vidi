@@ -489,7 +489,10 @@ export function SwipeGame({ game }: { game: GameplayData }) {
     else if (committedReaction.current && currentMovie) {
       if (!reduceMotion) triggerTactileFeedback(9);
       advance(currentMovie, true, committedReaction.current);
-    } else answerSeen();
+    } else if (currentMovie) {
+      if (!reduceMotion) triggerTactileFeedback(9);
+      advance(currentMovie, true, "liked");
+    }
     committedReaction.current = null;
   }
 
