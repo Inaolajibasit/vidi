@@ -146,7 +146,7 @@ export async function startGameAction(
       .order("id", { ascending: true });
 
     if (playerError) throw playerError;
-    const identity = await getGameIdentity();
+    const identity = await getGameIdentity({ loadDisplayName: false });
     if (!players?.[0] || !identityMatchesPlayer(identity, players[0])) {
       return { message: "Only the host can start this game." };
     }
@@ -203,7 +203,7 @@ export async function leaveGameAction(formData: FormData) {
         .eq("game_id", game.id)
         .order("joined_at", { ascending: true })
         .order("id", { ascending: true });
-      const identity = await getGameIdentity();
+      const identity = await getGameIdentity({ loadDisplayName: false });
       const currentIndex =
         players?.findIndex((player) =>
           identityMatchesPlayer(identity, player),

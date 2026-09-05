@@ -41,16 +41,18 @@ export async function getGameplayData(
 
   try {
     const admin = getSupabaseAdmin();
-    const { data: game, error: gameError } = await admin
-      .from("games")
-      .select("id, invite_code, status")
-      .eq("invite_code", parsedCode.data)
-      .maybeSingle();
+    const [{ data: game, error: gameError }, identity] = await Promise.all([
+      admin
+        .from("games")
+        .select("id, invite_code, status")
+        .eq("invite_code", parsedCode.data)
+        .maybeSingle(),
+      getGameIdentity({ loadDisplayName: false }),
+    ]);
 
     if (gameError) throw gameError;
     if (!game) return null;
 
-    const identity = await getGameIdentity();
     const { data: players, error: playerError } = await admin
       .from("game_players")
       .select("id, guest_session_id, profile_id")
@@ -62,39 +64,42 @@ export async function getGameplayData(
     );
     if (!player) return null;
 
-    const { data: gameMovies, error: deckError } = await admin
-      .from("game_movies")
-      .select("movie_id, position")
-      .eq("game_id", game.id)
-      .order("position", { ascending: true });
-
-    if (deckError) throw deckError;
-    const movieIds = (gameMovies ?? []).map((movie) => movie.movie_id);
-    if (movieIds.length === 0) return null;
-
     const [
-      { data: movies, error: movieError },
+      { data: gameMovies, error: deckError },
       { data: ratings, error: ratingError },
     ] = await Promise.all([
       admin
-        .from("movies")
-        .select("id, poster_path, release_year, title, tmdb_id")
-        .in("id", movieIds),
+        .from("game_movies")
+        .select("movie_id, position")
+        .eq("game_id", game.id)
+        .order("position", { ascending: true }),
       admin
         .from("ratings")
         .select("movie_id, reaction, seen")
         .eq("game_player_id", player.id),
     ]);
 
-    if (movieError) throw movieError;
+    if (deckError) throw deckError;
     if (ratingError) throw ratingError;
+    const movieIds = (gameMovies ?? []).map((movie) => movie.movie_id);
+    if (movieIds.length === 0) return null;
 
-    const { data: movieGenres, error: movieGenreError } = await admin
-      .from("movie_genres")
-      .select("genre_id, movie_id, position")
-      .in("movie_id", movieIds)
-      .order("position", { ascending: true });
+    const [
+      { data: movies, error: movieError },
+      { data: movieGenres, error: movieGenreError },
+    ] = await Promise.all([
+      admin
+        .from("movies")
+        .select("id, poster_path, release_year, title, tmdb_id")
+        .in("id", movieIds),
+      admin
+        .from("movie_genres")
+        .select("genre_id, movie_id, position")
+        .in("movie_id", movieIds)
+        .order("position", { ascending: true }),
+    ]);
 
+    if (movieError) throw movieError;
     if (movieGenreError) throw movieGenreError;
     const genreIds = [
       ...new Set((movieGenres ?? []).map((row) => row.genre_id)),

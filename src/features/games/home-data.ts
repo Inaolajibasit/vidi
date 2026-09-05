@@ -28,19 +28,20 @@ export async function getHomeData(): Promise<HomeData> {
   if (!user)
     return { authenticated: false, profile: null, recentGame: null };
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("avatar_url, display_name")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const { data: player } = await supabase
-    .from("game_players")
-    .select("game_id, progress")
-    .eq("profile_id", user.id)
-    .order("joined_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const [{ data: profile }, { data: player }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("avatar_url, display_name")
+      .eq("id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("game_players")
+      .select("game_id, progress")
+      .eq("profile_id", user.id)
+      .order("joined_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
   const account = {
     avatarUrl:

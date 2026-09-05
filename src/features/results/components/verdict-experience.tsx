@@ -66,8 +66,8 @@ function PosterStrip({ movies }: { movies: VerdictMovie[] }) {
                 alt=""
                 className="h-full w-full object-cover"
                 height={252}
+                sizes="112px"
                 src={movie.posterUrl}
-                unoptimized
                 width={168}
               />
             ) : null}

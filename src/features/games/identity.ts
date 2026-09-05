@@ -19,11 +19,13 @@ export interface GameIdentity {
 interface IdentityOptions {
   createGuest?: boolean;
   displayName?: string;
+  loadDisplayName?: boolean;
 }
 
 export async function getGameIdentity({
   createGuest = false,
   displayName = "Player",
+  loadDisplayName = true,
 }: IdentityOptions = {}): Promise<GameIdentity | null> {
   const publicClient = await createSupabaseServerClient();
   const { data } = publicClient
@@ -31,12 +33,13 @@ export async function getGameIdentity({
     : { data: { user: null } };
 
   if (data.user) {
-    const admin = getSupabaseAdmin();
-    const { data: profile } = await admin
-      .from("profiles")
-      .select("display_name")
-      .eq("id", data.user.id)
-      .maybeSingle();
+    const { data: profile } = loadDisplayName
+      ? await getSupabaseAdmin()
+          .from("profiles")
+          .select("display_name")
+          .eq("id", data.user.id)
+          .maybeSingle()
+      : { data: null };
 
     return {
       displayName: profile?.display_name ?? displayName,

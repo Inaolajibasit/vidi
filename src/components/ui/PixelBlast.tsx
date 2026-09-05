@@ -406,6 +406,30 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
   const visibilityRef = useRef({ visible: true });
   const speedRef = useRef(speed);
 
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !autoPauseOffscreen) return;
+
+    const updateDocumentVisibility = () => {
+      visibilityRef.current.visible = document.visibilityState === 'visible';
+    };
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        visibilityRef.current.visible =
+          document.visibilityState === 'visible' && entry.isIntersecting;
+      },
+      { rootMargin: '100px' }
+    );
+
+    updateDocumentVisibility();
+    observer.observe(container);
+    document.addEventListener('visibilitychange', updateDocumentVisibility);
+    return () => {
+      observer.disconnect();
+      document.removeEventListener('visibilitychange', updateDocumentVisibility);
+    };
+  }, [autoPauseOffscreen]);
+
   const threeRef = useRef<{
     renderer: THREE.WebGLRenderer;
     scene: THREE.Scene;

@@ -9,7 +9,7 @@ import {
   type MotionValue,
   type PanInfo,
 } from "framer-motion";
-import Image from "next/image";
+import Image, { getImageProps } from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -46,6 +46,7 @@ const SWIPE_DISTANCE = 88;
 const FLICK_DISTANCE = 32;
 const FLICK_VELOCITY = 700;
 const COMMENTS = ["valid.", "interesting.", "counts. barely."];
+const POSTER_SIZES = "(max-width: 448px) calc(100vw - 2rem), 400px";
 
 const REACTIONS: Array<{
   emoji: string;
@@ -146,6 +147,9 @@ export function SwipeGame({ game }: { game: GameplayData }) {
   const commentTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resultsCheckPending = useRef(false);
   const reactionDock = useRef<HTMLDivElement>(null);
+  const reactionRects = useRef<
+    Array<{ reaction: MovieReaction; rect: DOMRect }>
+  >([]);
   const gestureX = useMotionValue(0);
   const unseenBackground = useTransform(
     gestureX,
@@ -299,10 +303,19 @@ export function SwipeGame({ game }: { game: GameplayData }) {
     const nextPoster = game.movies[currentIndex + 1]?.posterUrl;
     if (!nextPoster) return;
 
+    const { props } = getImageProps({
+      alt: "",
+      height: 1170,
+      sizes: POSTER_SIZES,
+      src: nextPoster,
+      width: 780,
+    });
     const image = new window.Image();
     image.decoding = "async";
     image.fetchPriority = "high";
-    image.src = nextPoster;
+    image.sizes = props.sizes ?? POSTER_SIZES;
+    image.srcset = props.srcSet ?? "";
+    image.src = props.src;
     void image.decode().catch(() => undefined);
   }, [currentIndex, game.movies]);
 
@@ -429,11 +442,7 @@ export function SwipeGame({ game }: { game: GameplayData }) {
   }
 
   function reactionAtPoint(point: { x: number; y: number }) {
-    if (!reactionDock.current) return null;
-    const slots =
-      reactionDock.current.querySelectorAll<HTMLElement>("[data-reaction]");
-    for (const slot of slots) {
-      const rect = slot.getBoundingClientRect();
+    for (const { reaction, rect } of reactionRects.current) {
       const horizontalSlop = 28;
       if (
         point.x >= rect.left - horizontalSlop &&
@@ -441,10 +450,21 @@ export function SwipeGame({ game }: { game: GameplayData }) {
         point.y >= rect.top &&
         point.y <= rect.bottom
       ) {
-        return slot.dataset.reaction as MovieReaction;
+        return reaction;
       }
     }
     return null;
+  }
+
+  function handleDragStart() {
+    if (!reactionDock.current) return;
+    reactionRects.current = Array.from(
+      reactionDock.current.querySelectorAll<HTMLElement>("[data-reaction]"),
+      (slot) => ({
+        reaction: slot.dataset.reaction as MovieReaction,
+        rect: slot.getBoundingClientRect(),
+      }),
+    );
   }
 
   function handleDrag(
@@ -466,6 +486,7 @@ export function SwipeGame({ game }: { game: GameplayData }) {
     const selectedReaction =
       info.offset.x >= 54 ? reactionAtPoint(info.point) : null;
     gestureX.set(0);
+    reactionRects.current = [];
     setDraggingRight(false);
     setHoveredReaction(null);
 
@@ -599,6 +620,8 @@ export function SwipeGame({ game }: { game: GameplayData }) {
               movie={currentMovie}
               onDrag={handleDrag}
               onDragEnd={handleDragEnd}
+              onDragStart={handleDragStart}
+              priority={currentIndex === game.currentIndex}
               reactionPending={reactionPending}
               reduceMotion={Boolean(reduceMotion)}
             />
@@ -760,6 +783,8 @@ interface MovieSwipeCardProps {
   movie: GameplayMovie;
   onDrag: (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => void;
   onDragEnd: (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => void;
+  onDragStart: () => void;
+  priority: boolean;
   reactionPending: boolean;
   reduceMotion: boolean;
 }
@@ -769,6 +794,8 @@ function MovieSwipeCard({
   movie,
   onDrag,
   onDragEnd,
+  onDragStart,
+  priority,
   reactionPending,
   reduceMotion,
 }: MovieSwipeCardProps) {
@@ -807,6 +834,7 @@ function MovieSwipeCard({
       initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.975, y: 10 }}
       onDrag={onDrag}
       onDragEnd={onDragEnd}
+      onDragStart={onDragStart}
       style={{ rotate, x }}
       transition={
         reduceMotion
@@ -823,10 +851,9 @@ function MovieSwipeCard({
             draggable={false}
             height={1170}
             onError={() => setPosterFailed(true)}
-            priority
-            sizes="(max-width: 448px) calc(100vw - 2rem), 400px"
+            priority={priority}
+            sizes={POSTER_SIZES}
             src={movie.posterUrl}
-            unoptimized
             width={780}
           />
         ) : (

@@ -100,9 +100,11 @@ export function LobbyExperience({ lobby }: { lobby: LobbyData }) {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) return;
 
-    const channel = supabase.channel(lobbyTopic(lobby.inviteCode), {
-      config: { presence: { key: presenceKey } },
-    });
+    const channel = lobby.isParticipant
+      ? supabase.channel(lobbyTopic(lobby.inviteCode), {
+          config: { presence: { key: presenceKey } },
+        })
+      : supabase.channel(lobbyTopic(lobby.inviteCode));
 
     const refreshLobby = () => router.refresh();
     channel
@@ -116,7 +118,9 @@ export function LobbyExperience({ lobby }: { lobby: LobbyData }) {
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
           setConnectionState("Live");
-          await channel.track({ online_at: new Date().toISOString() });
+          if (lobby.isParticipant) {
+            await channel.track({ online_at: new Date().toISOString() });
+          }
         } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
           setConnectionState("Reconnecting");
         } else if (status === "CLOSED") {
@@ -127,7 +131,7 @@ export function LobbyExperience({ lobby }: { lobby: LobbyData }) {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [lobby.inviteCode, presenceKey, router]);
+  }, [lobby.inviteCode, lobby.isParticipant, presenceKey, router]);
 
   if (!lobby.isParticipant) {
     const unavailable = lobby.status !== "waiting" || isFull;

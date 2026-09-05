@@ -46,7 +46,7 @@ function challengeStartMessage(error: unknown) {
 
 export async function createChallengeAction(formData: FormData) {
   const inviteCode = codeSchema.safeParse(formData.get("inviteCode"));
-  const identity = await getGameIdentity();
+  const identity = await getGameIdentity({ loadDisplayName: false });
   if (!inviteCode.success || !identity?.profileId) {
     redirect(`/auth?next=${encodeURIComponent(`/results/${inviteCode.success ? inviteCode.data : ""}`)}`);
   }
@@ -126,7 +126,10 @@ export async function trackChallengeOpenedAction(rawCode: string) {
     .eq("active", true)
     .maybeSingle();
   if (!challenge) return;
-  const identity = await getGameIdentity({ createGuest: true });
+  const identity = await getGameIdentity({
+    createGuest: true,
+    loadDisplayName: false,
+  });
   await admin.from("challenge_events").insert({
     challenge_id: challenge.id,
     event_type: "challenge_opened",

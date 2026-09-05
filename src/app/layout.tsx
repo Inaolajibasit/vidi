@@ -1,10 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { GeistSans } from "geist/font/sans";
 
-import "@fontsource-variable/roboto-condensed";
 import "@fontsource-variable/montserrat";
-import "@fontsource/erica-one";
-import "@fontsource/fascinate";
+import "@fontsource/erica-one/latin.css";
+import "@fontsource/fascinate/latin.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -31,11 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      className={GeistSans.variable}
-      lang="en"
-      suppressHydrationWarning
-    >
+    <html lang="en" suppressHydrationWarning>
       <body>{children}</body>
     </html>
   );

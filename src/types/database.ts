@@ -404,6 +404,17 @@ export interface Database {
         };
         Returns: Json;
       };
+      record_game_answer_by_identity: {
+        Args: {
+          p_guest_session_id: string | null;
+          p_invite_code: string;
+          p_profile_id: string | null;
+          p_reaction: MovieReaction | null;
+          p_seen: boolean;
+          p_tmdb_id: number;
+        };
+        Returns: Json;
+      };
     };
     Enums: {
       friendship_status: FriendshipStatus;

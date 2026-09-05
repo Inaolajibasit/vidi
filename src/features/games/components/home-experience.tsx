@@ -1,18 +1,10 @@
-"use client";
-
-import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
-import { useEffect } from "react";
 
 import { AccountMenu } from "@/components/layout/account-menu";
-import { Icon } from "@/components/ui/icon";
-import PixelBlast from "@/components/ui/PixelBlast";
-import { cn } from "@/lib/utils";
+import { DeferredPixelBlast } from "@/components/ui/deferred-pixel-blast";
+import { HomeViewTracker } from "@/features/analytics/home-view-tracker";
+import { HomeActionLink } from "@/features/games/components/home-action-link";
 import type { RecentGame } from "@/features/games/home-data";
-import {
-  trackAnalytics,
-  trackAnalyticsOnce,
-} from "@/lib/analytics/client";
 
 interface HomeExperienceProps {
   authenticated: boolean;
@@ -33,38 +25,6 @@ const statusLabels = {
   waiting: "Waiting for players",
   waiting_results: "Waiting for results",
 } as const;
-
-function ActionLink({
-  children,
-  href,
-  onClick,
-  primary = false,
-}: {
-  children: React.ReactNode;
-  href: string;
-  onClick?: () => void;
-  primary?: boolean;
-}) {
-  return (
-    <Link
-      className={cn(
-        "tap-target group flex h-15 w-full items-center justify-between rounded-sm border px-5 text-xs font-extrabold tracking-[0.09em] uppercase shadow-[0_0_0_0_transparent] transition-[color,background-color,border-color,transform,box-shadow] duration-150 ease-out active:scale-[0.965]",
-        primary
-          ? "border-accent bg-accent text-background hover:bg-accent-strong hover:shadow-[5px_5px_0_#2227F7]"
-          : "border-foreground/55 bg-background/70 text-foreground hover:border-foreground hover:bg-foreground hover:text-background backdrop-blur-sm",
-      )}
-      href={href}
-      onClick={onClick}
-    >
-      <span>{children}</span>
-      <Icon
-        className="transition-transform duration-150 group-hover:translate-x-1"
-        name="chevron-right"
-        size={18}
-      />
-    </Link>
-  );
-}
 
 function RecentGameCard({ game }: { game: RecentGame }) {
   const movieCount =
@@ -113,38 +73,15 @@ export function HomeExperience({
   profile,
   recentGame,
 }: HomeExperienceProps) {
-  const reduceMotion = useReducedMotion();
-  const initial = reduceMotion ? false : { opacity: 1, y: 18 };
-  const transition = { duration: 0.36, ease: [0.16, 1, 0.3, 1] as const };
-
-  useEffect(() => {
-    trackAnalyticsOnce("home-viewed", "home_viewed", {});
-  }, []);
-
   return (
     <main
       className="font-ui bg-background relative min-h-dvh overflow-hidden [--accent-personality-soft:#111469] [--accent-personality:#2227F7] [--action-primary-hover:#ffe05c] [--action-primary:#FFD628] [--focus-ring:#FFD628]"
     >
       <div
         aria-hidden="true"
-        className="absolute inset-0 [mask-image:linear-gradient(to_bottom,black_0%,black_72%,transparent_100%)] opacity-45"
+        className="absolute inset-0 bg-[radial-gradient(circle,rgba(34,39,247,0.55)_0_1px,transparent_1.5px)] [background-size:17px_17px] [mask-image:linear-gradient(to_bottom,black_0%,black_72%,transparent_100%)] opacity-45"
       >
-        <PixelBlast
-          antialias={false}
-          color="#2227F7"
-          edgeFade={0.18}
-          enableRipples={!reduceMotion}
-          patternDensity={0.72}
-          patternScale={2.4}
-          pixelSize={5}
-          pixelSizeJitter={0.18}
-          rippleIntensityScale={1.15}
-          rippleSpeed={0.34}
-          rippleThickness={0.1}
-          speed={reduceMotion ? 0 : 0.16}
-          transparent
-          variant="square"
-        />
+        <DeferredPixelBlast />
       </div>
       <div
         aria-hidden="true"
@@ -152,12 +89,7 @@ export function HomeExperience({
       />
 
       <div className="relative mx-auto flex min-h-dvh w-full max-w-[38rem] flex-col px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-8 sm:px-8 md:justify-center md:py-14">
-        <motion.header
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between md:absolute md:inset-x-8 md:top-8"
-          initial={initial}
-          transition={transition}
-        >
+        <header className="vidi-enter flex items-center justify-between md:absolute md:inset-x-8 md:top-8">
           <Link
             aria-label="vidi home"
             className="font-accent text-accent inline-flex min-h-11 items-center text-2xl tracking-[-0.06em] transition-transform active:scale-95"
@@ -170,14 +102,10 @@ export function HomeExperience({
             avatarUrl={profile?.avatarUrl}
             displayName={profile?.displayName}
           />
-        </motion.header>
+        </header>
 
         <div className="flex flex-1 flex-col justify-center pt-12 pb-7 md:flex-none md:pt-20 md:pb-0">
-          <motion.section
-            animate={{ opacity: 1, y: 0 }}
-            initial={initial}
-            transition={{ ...transition, delay: reduceMotion ? 0 : 0.05 }}
-          >
+          <section className="vidi-enter [animation-delay:50ms]">
             <h1 className="font-editorial text-[clamp(5.35rem,26vw,9rem)] leading-[0.72] tracking-[-0.055em] uppercase">
               <span className="block">Seen a</span>
               <span className="text-accent ml-[3%] block">Movie?</span>
@@ -185,14 +113,9 @@ export function HomeExperience({
                 Prove it.
               </span>
             </h1>
-          </motion.section>
+          </section>
 
-          <motion.div
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-8 grid gap-8 sm:grid-cols-[0.8fr_1.2fr] sm:items-end"
-            initial={initial}
-            transition={{ ...transition, delay: reduceMotion ? 0 : 0.1 }}
-          >
+          <div className="vidi-enter mt-8 grid gap-8 [animation-delay:100ms] sm:grid-cols-[0.8fr_1.2fr] sm:items-end">
             <p className="text-muted border-l-accent border-l-2 pl-4 text-sm leading-6 font-medium">
               play with friends.
               <br />
@@ -202,26 +125,20 @@ export function HomeExperience({
             </p>
 
             <div className="grid gap-3">
-              <ActionLink
+              <HomeActionLink
                 href="/games/new"
-                onClick={() => trackAnalytics("create_game_clicked", {})}
+                label="Create game"
                 primary
-              >
-                Create game
-              </ActionLink>
-              <ActionLink href="/join">Join game</ActionLink>
+                trackCreate
+              />
+              <HomeActionLink href="/join" label="Join game" />
             </div>
-          </motion.div>
+          </div>
 
           {recentGame ? (
-            <motion.div
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-8"
-              initial={initial}
-              transition={{ ...transition, delay: reduceMotion ? 0 : 0.15 }}
-            >
+            <div className="vidi-enter mt-8 [animation-delay:150ms]">
               <RecentGameCard game={recentGame} />
-            </motion.div>
+            </div>
           ) : null}
         </div>
         <footer className="text-muted relative flex justify-center gap-5 pb-2 text-[0.65rem] font-semibold tracking-[0.04em] uppercase">
@@ -238,6 +155,7 @@ export function HomeExperience({
             Terms
           </Link>
         </footer>
+        <HomeViewTracker />
       </div>
     </main>
   );

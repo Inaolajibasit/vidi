@@ -40,7 +40,6 @@ function SavedMovie({ item }: { item: SavedItem }) {
             fill
             sizes="64px"
             src={poster}
-            unoptimized
           />
         ) : null}
       </div>

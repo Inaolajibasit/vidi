@@ -102,14 +102,16 @@ export async function getVerdictData(
   const code = inviteCodeSchema.safeParse(rawCode);
   if (!code.success) return null;
   const admin = getSupabaseAdmin();
-  const { data: game } = await admin
-    .from("games")
-    .select("id, invite_code, status")
-    .eq("invite_code", code.data)
-    .maybeSingle();
+  const [{ data: game }, identity] = await Promise.all([
+    admin
+      .from("games")
+      .select("id, invite_code, status")
+      .eq("invite_code", code.data)
+      .maybeSingle(),
+    getGameIdentity({ loadDisplayName: false }),
+  ]);
   if (!game || game.status !== "completed") return null;
 
-  const identity = await getGameIdentity();
   const { data: players } = await admin
     .from("game_players")
     .select("id, display_name, guest_session_id, profile_id, progress")

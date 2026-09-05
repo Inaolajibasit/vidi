@@ -1,6 +1,5 @@
 "use client";
 
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
@@ -28,7 +27,6 @@ export function AccountMenu({
 }: AccountMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (!open) return;
@@ -73,15 +71,10 @@ export function AccountMenu({
         )}
       </button>
 
-      <AnimatePresence>
-        {open ? (
-          <motion.div
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="border-foreground/20 bg-background/95 absolute top-[calc(100%+0.75rem)] right-0 z-50 w-52 origin-top-right overflow-hidden rounded-sm border p-1.5 shadow-[0_18px_60px_rgba(0,0,0,0.6)] backdrop-blur-xl"
-            exit={{ opacity: 0, scale: 0.97, y: -5 }}
-            initial={reduceMotion ? false : { opacity: 0, scale: 0.97, y: -5 }}
+      {open ? (
+          <div
+            className="account-menu-enter border-foreground/20 bg-background/95 absolute top-[calc(100%+0.75rem)] right-0 z-50 w-52 origin-top-right overflow-hidden rounded-sm border p-1.5 shadow-[0_18px_60px_rgba(0,0,0,0.6)] backdrop-blur-xl"
             role="menu"
-            transition={{ duration: reduceMotion ? 0 : 0.16, ease: [0.16, 1, 0.3, 1] }}
           >
             <div className="border-foreground/15 border-b px-3 py-2.5">
               <p className="text-muted text-[0.62rem] font-bold tracking-[0.12em] uppercase">
@@ -132,9 +125,8 @@ export function AccountMenu({
                   <Icon name="chevron-right" size={17} />
                 </Link>
             )}
-          </motion.div>
+          </div>
         ) : null}
-      </AnimatePresence>
     </div>
   );
 }

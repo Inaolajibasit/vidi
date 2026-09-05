@@ -53,7 +53,7 @@ export async function ensureGameResultsAction(
     if (game.status === "active") return "waiting";
     if (!["waiting_results", "completed"].includes(game.status)) return "error";
 
-    const identity = await getGameIdentity();
+    const identity = await getGameIdentity({ loadDisplayName: false });
     const { data: players } = await admin
       .from("game_players")
       .select("guest_session_id, profile_id")
@@ -92,83 +92,27 @@ export async function recordAnswerAction(
 
   try {
     const admin = getSupabaseAdmin();
-    const { data: game } = await admin
-      .from("games")
-      .select("id, mode, status")
-      .eq("invite_code", parsed.data.inviteCode)
-      .maybeSingle();
+    const identity = await getGameIdentity({ loadDisplayName: false });
+    if (!identity) return { error: "Player session not found.", success: false };
 
-    if (
-      !game ||
-      !["active", "waiting_results", "completed"].includes(game.status)
-    ) {
-      return { error: "This game is not active.", success: false };
-    }
-
-    const identity = await getGameIdentity();
-    const { data: players } = await admin
-      .from("game_players")
-      .select("id, guest_session_id, profile_id, progress, finished_at")
-      .eq("game_id", game.id);
-    const player = players?.find((candidate) =>
-      identityMatchesPlayer(identity, candidate),
-    );
-    if (!player) return { error: "Player session not found.", success: false };
-
-    const { data: movie } = await admin
-      .from("movies")
-      .select("id")
-      .eq("tmdb_id", parsed.data.tmdbId)
-      .maybeSingle();
-    if (!movie) return { error: "Movie not found.", success: false };
-
-    const confirmedResult = async () => {
-      const { data: existing } = await admin
-        .from("ratings")
-        .select("reaction, seen")
-        .eq("game_player_id", player.id)
-        .eq("movie_id", movie.id)
-        .maybeSingle();
-      if (
-        existing &&
-        existing.seen === parsed.data.seen &&
-        existing.reaction === parsed.data.reaction
-      ) {
-        return {
-          complete: Boolean(player.finished_at),
-          progress: player.progress,
-          reactionPending: existing.seen && existing.reaction === null,
-          success: true,
-        } satisfies RecordAnswerResult;
-      }
-      return null;
-    };
-
-    if (game.status !== "active") {
-      return (
-        (await confirmedResult()) ?? {
-          error: "This game is no longer accepting answers.",
-          success: false,
-        }
-      );
-    }
-
-    const { data, error } = await admin.rpc("record_game_answer", {
-      p_game_id: game.id,
-      p_game_player_id: player.id,
-      p_movie_id: movie.id,
+    const { data, error } = await admin.rpc(
+      "record_game_answer_by_identity",
+      {
+      p_guest_session_id: identity.guestSessionId,
+      p_invite_code: parsed.data.inviteCode,
+      p_profile_id: identity.profileId,
       p_reaction: parsed.data.reaction,
       p_seen: parsed.data.seen,
-    });
+      p_tmdb_id: parsed.data.tmdbId,
+      },
+    );
 
-    if (error) {
-      const confirmed = await confirmedResult();
-      if (confirmed) return confirmed;
-      throw error;
-    }
+    if (error) throw error;
     const result = z
       .object({
         complete: z.boolean(),
+        game_id: z.uuid(),
+        mode: z.enum(["quick", "proper", "no_life"]),
         progress: z.number().int().nonnegative(),
         reaction_pending: z.boolean(),
       })
@@ -178,7 +122,7 @@ export async function recordAnswerAction(
       await trackServerAnalytics(
         "movie_swiped",
         {
-          deckSize: GAME_MODE_DETAILS[game.mode].movieCount,
+          deckSize: GAME_MODE_DETAILS[result.mode].movieCount,
           progress: result.progress,
         },
         parsed.data.inviteCode,
@@ -187,7 +131,7 @@ export async function recordAnswerAction(
 
     if (result.complete) {
       try {
-        await completeChallengeAttempt(game.id);
+        await completeChallengeAttempt(result.game_id);
       } catch (error) {
         // Analytics must never make a successfully persisted answer appear to
         // fail. The null completed_at row remains safe to repair later.

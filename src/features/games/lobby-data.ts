@@ -31,11 +31,14 @@ export async function getLobbyData(
 
   try {
     const admin = getSupabaseAdmin();
-    const { data: game } = await admin
-      .from("games")
-      .select("id, host_profile_id, invite_code, max_players, mode, status")
-      .eq("invite_code", parsedCode.data)
-      .maybeSingle();
+    const [{ data: game }, identity] = await Promise.all([
+      admin
+        .from("games")
+        .select("id, host_profile_id, invite_code, max_players, mode, status")
+        .eq("invite_code", parsedCode.data)
+        .maybeSingle(),
+      getGameIdentity({ loadDisplayName: false }),
+    ]);
 
     if (!game) return null;
 
@@ -66,7 +69,6 @@ export async function getLobbyData(
       (profiles ?? []).map((profile) => [profile.id, profile.avatar_url]),
     );
 
-    const identity = await getGameIdentity();
     const hostPlayer = players?.[0];
     const isHost = hostPlayer
       ? identityMatchesPlayer(identity, hostPlayer)
