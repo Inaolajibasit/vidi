@@ -31,7 +31,7 @@
   --black-850: #171717;
   --white-warm: #f1efe7;
   --gray-400: #a3a3a3;
-  --gray-500: #777772;
+  --gray-500: #7a7a75;
   --green-400: #ffd628;
   --green-500: #ffe05c;
   --purple-400: #2227f7;
@@ -75,6 +75,7 @@
   --action-primary: var(--green-400);
   --action-primary-hover: var(--green-500);
   --accent-personality: var(--purple-400);
+  --accent-personality-readable: #6970ff;
   --accent-personality-soft: var(--purple-900);
   --border-subtle: var(--line-white);
   --border-strong: var(--line-white-strong);
@@ -209,6 +210,11 @@ a {
 ::selection {
   background: var(--action-primary);
   color: var(--text-inverse);
+}
+
+/* The saturated brand purple is reserved for large type and surfaces. */
+.text-purple {
+  color: var(--accent-personality-readable);
 }
 
 :focus-visible {

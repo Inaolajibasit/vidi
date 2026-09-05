@@ -58,7 +58,15 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        {children}
+        <a
+          className="bg-accent text-background fixed top-3 left-3 z-[300] -translate-y-24 rounded-sm px-4 py-3 text-sm font-extrabold uppercase transition-transform focus:translate-y-0"
+          href="#main-content"
+        >
+          Skip to content
+        </a>
+        <div id="main-content" tabIndex={-1}>
+          {children}
+        </div>
         <InstallPrompt />
         <ServiceWorkerRegistration />
       </body>
