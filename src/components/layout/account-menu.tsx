@@ -48,12 +48,12 @@ export function AccountMenu({
   }, [open]);
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className="relative z-[100]" ref={menuRef}>
       <button
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label={open ? "Close account menu" : "Open account menu"}
-        className="focus-visible:outline-accent group relative grid size-11 place-items-center rounded-sm transition-transform duration-150 hover:-rotate-2 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-4"
+        className="focus-visible:outline-accent group relative grid size-11 place-items-center rounded-sm transition-transform duration-150 hover:-rotate-2 focus-visible:outline-2 focus-visible:outline-offset-4 active:scale-95"
         onClick={() => setOpen((current) => !current)}
         type="button"
       >
@@ -65,68 +65,68 @@ export function AccountMenu({
             src={avatarUrl ?? undefined}
           />
         ) : (
-          <span className="border-foreground/40 bg-background text-foreground grid size-11 place-items-center rounded-sm border shadow-[3px_3px_0_#2227F7] transition-shadow group-hover:border-accent group-hover:shadow-[4px_4px_0_#FFD628]">
+          <span className="border-foreground/40 bg-background text-foreground group-hover:border-accent grid size-11 place-items-center rounded-sm border shadow-[3px_3px_0_#2227F7] transition-shadow group-hover:shadow-[4px_4px_0_#FFD628]">
             <Icon name="profile" size={20} />
           </span>
         )}
       </button>
 
       {open ? (
-          <div
-            className="account-menu-enter border-foreground/20 bg-background/95 absolute top-[calc(100%+0.75rem)] right-0 z-50 w-52 origin-top-right overflow-hidden rounded-sm border p-1.5 shadow-[0_18px_60px_rgba(0,0,0,0.6)] backdrop-blur-xl"
-            role="menu"
-          >
-            <div className="border-foreground/15 border-b px-3 py-2.5">
-              <p className="text-muted text-[0.62rem] font-bold tracking-[0.12em] uppercase">
-                {authenticated ? "Signed in as" : "Your vidi"}
-              </p>
-              <p className="mt-1 truncate text-sm font-bold">
-                {authenticated ? displayName : "Not signed in"}
-              </p>
-            </div>
-            {authenticated ? (
-              <>
-                <nav aria-label="Account navigation" className="py-1">
-                  {links.map((item) => (
-                    <Link
-                      className="hover:bg-accent hover:text-background focus-visible:bg-accent focus-visible:text-background flex min-h-11 items-center gap-3 rounded-[2px] px-3 text-sm font-bold transition-colors outline-none"
-                      href={item.href}
-                      key={item.href}
-                      onClick={() => setOpen(false)}
-                      role="menuitem"
-                    >
-                      <Icon name={item.icon} size={17} />
-                      {item.label}
-                    </Link>
-                  ))}
-                </nav>
-                <form
-                  action={signOutAction}
-                  className="border-foreground/15 border-t pt-1"
-                >
-                  <button
-                    className="text-muted hover:bg-purple hover:text-foreground focus-visible:bg-purple focus-visible:text-foreground flex min-h-11 w-full items-center gap-3 rounded-[2px] px-3 text-sm font-bold transition-colors outline-none"
-                    role="menuitem"
-                    type="submit"
-                  >
-                    <Icon name="logout" size={17} />
-                    Log out
-                  </button>
-                </form>
-              </>
-            ) : (
-                <Link
-                  className="bg-accent text-background mt-1 flex min-h-11 items-center justify-between rounded-[2px] px-3 text-sm font-extrabold uppercase transition-transform active:scale-[0.98]"
-                  href="/auth"
-                  onClick={() => setOpen(false)}
-                  role="menuitem"
-                >
-                  Sign up
-                  <Icon name="chevron-right" size={17} />
-                </Link>
-            )}
+        <div
+          className="account-menu-enter border-foreground/20 bg-background/95 absolute top-[calc(100%+0.75rem)] right-0 z-[110] w-52 origin-top-right overflow-hidden rounded-sm border p-1.5 shadow-[0_18px_60px_rgba(0,0,0,0.6)] backdrop-blur-xl"
+          role="menu"
+        >
+          <div className="border-foreground/15 border-b px-3 py-2.5">
+            <p className="text-muted text-[0.62rem] font-bold tracking-[0.12em] uppercase">
+              {authenticated ? "Signed in as" : "Your vidi"}
+            </p>
+            <p className="mt-1 truncate text-sm font-bold">
+              {authenticated ? displayName : "Not signed in"}
+            </p>
           </div>
-        ) : null}
+          {authenticated ? (
+            <>
+              <nav aria-label="Account navigation" className="py-1">
+                {links.map((item) => (
+                  <Link
+                    className="hover:bg-accent hover:text-background focus-visible:bg-accent focus-visible:text-background flex min-h-11 items-center gap-3 rounded-[2px] px-3 text-sm font-bold transition-colors outline-none"
+                    href={item.href}
+                    key={item.href}
+                    onClick={() => setOpen(false)}
+                    role="menuitem"
+                  >
+                    <Icon name={item.icon} size={17} />
+                    {item.label}
+                  </Link>
+                ))}
+              </nav>
+              <form
+                action={signOutAction}
+                className="border-foreground/15 border-t pt-1"
+              >
+                <button
+                  className="text-muted hover:bg-purple hover:text-foreground focus-visible:bg-purple focus-visible:text-foreground flex min-h-11 w-full items-center gap-3 rounded-[2px] px-3 text-sm font-bold transition-colors outline-none"
+                  role="menuitem"
+                  type="submit"
+                >
+                  <Icon name="logout" size={17} />
+                  Log out
+                </button>
+              </form>
+            </>
+          ) : (
+            <Link
+              className="bg-accent text-background mt-1 flex min-h-11 items-center justify-between rounded-[2px] px-3 text-sm font-extrabold uppercase transition-transform active:scale-[0.98]"
+              href="/auth"
+              onClick={() => setOpen(false)}
+              role="menuitem"
+            >
+              Sign up
+              <Icon name="chevron-right" size={17} />
+            </Link>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

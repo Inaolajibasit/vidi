@@ -650,12 +650,12 @@ export function SwipeGame({ game }: { game: GameplayData }) {
           </AnimatePresence>
         </section>
 
-        <div className="mt-4 min-h-31">
+        <div className="mt-3 shrink-0">
           <AnimatePresence mode="wait" initial={false}>
             {reactionPending ? (
               <motion.div
                 animate={{ opacity: 1, y: 0 }}
-                className="flex min-h-28 items-center justify-center text-center"
+                className="flex min-h-14 items-center justify-center text-center"
                 exit={{ opacity: 0, y: 6 }}
                 initial={{ opacity: 0, y: 6 }}
                 key="reactions"
@@ -691,13 +691,15 @@ export function SwipeGame({ game }: { game: GameplayData }) {
               </motion.div>
             )}
           </AnimatePresence>
-          <p
-            aria-live="assertive"
-            className="text-danger mt-2 min-h-5 text-center text-xs"
-            role={error ? "alert" : undefined}
-          >
-            {error}
-          </p>
+          {error ? (
+            <p
+              aria-live="assertive"
+              className="text-danger mt-2 text-center text-xs"
+              role="alert"
+            >
+              {error}
+            </p>
+          ) : null}
         </div>
       </div>
     </main>
