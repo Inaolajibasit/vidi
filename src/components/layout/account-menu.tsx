@@ -31,6 +31,7 @@ export function AccountMenu({
 }: AccountMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const hasAttention = friendRequests > 0 || incompleteGames > 0;
 
   useEffect(() => {
@@ -41,7 +42,10 @@ export function AccountMenu({
     }
 
     function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
     }
 
     document.addEventListener("pointerdown", closeOnOutsidePress);
@@ -55,11 +59,12 @@ export function AccountMenu({
   return (
     <div className="relative z-[100]" ref={menuRef}>
       <button
+        aria-controls="account-menu-panel"
         aria-expanded={open}
-        aria-haspopup="menu"
         aria-label={open ? "Close account menu" : "Open account menu"}
         className="focus-visible:outline-accent group relative grid size-11 place-items-center rounded-sm transition-transform duration-150 hover:-rotate-2 focus-visible:outline-2 focus-visible:outline-offset-4 active:scale-95"
         onClick={() => setOpen((current) => !current)}
+        ref={triggerRef}
         type="button"
       >
         {authenticated ? (
@@ -85,8 +90,8 @@ export function AccountMenu({
 
       {open ? (
         <div
+          id="account-menu-panel"
           className="account-menu-enter border-foreground/20 bg-background/95 absolute top-[calc(100%+0.75rem)] right-0 z-[110] w-52 origin-top-right overflow-hidden rounded-sm border p-1.5 shadow-[0_18px_60px_rgba(0,0,0,0.6)] backdrop-blur-xl"
-          role="menu"
         >
           <div className="border-foreground/15 border-b px-3 py-2.5">
             <p className="text-muted text-[0.62rem] font-bold tracking-[0.12em] uppercase">
@@ -112,7 +117,6 @@ export function AccountMenu({
                       href={item.href}
                       key={item.href}
                       onClick={() => setOpen(false)}
-                      role="menuitem"
                     >
                       <Icon name={item.icon} size={17} />
                       <span className="flex-1">{item.label}</span>
@@ -133,7 +137,6 @@ export function AccountMenu({
               >
                 <button
                   className="text-muted hover:bg-purple hover:text-foreground focus-visible:bg-purple focus-visible:text-foreground flex min-h-11 w-full items-center gap-3 rounded-[2px] px-3 text-sm font-bold transition-colors outline-none"
-                  role="menuitem"
                   type="submit"
                 >
                   <Icon name="logout" size={17} />
@@ -146,7 +149,6 @@ export function AccountMenu({
               className="bg-accent text-background mt-1 flex min-h-11 items-center justify-between rounded-[2px] px-3 text-sm font-extrabold uppercase transition-transform active:scale-[0.98]"
               href="/auth"
               onClick={() => setOpen(false)}
-              role="menuitem"
             >
               Sign up
               <Icon name="chevron-right" size={17} />
