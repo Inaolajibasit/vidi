@@ -4,8 +4,13 @@ import { z } from "zod";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { GameMode } from "@/types/database";
+import { consumeRateLimit } from "@/lib/security/rate-limit";
 
-const codeSchema = z.string().trim().toUpperCase().regex(/^[A-Z0-9]{6,12}$/);
+const codeSchema = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^[A-Z0-9]{6,12}$/);
 
 export interface ChallengeData {
   code: string;
@@ -17,9 +22,12 @@ export interface ChallengeData {
   movieCount: number;
 }
 
-export async function getChallengeData(rawCode: string): Promise<ChallengeData | null> {
+export async function getChallengeData(
+  rawCode: string,
+): Promise<ChallengeData | null> {
   const code = codeSchema.safeParse(rawCode);
   if (!code.success) return null;
+  if (!(await consumeRateLimit("challenge_read", 120, 3_600))) return null;
   const admin = getSupabaseAdmin();
   const { data: challenge, error } = await admin
     .from("challenges")

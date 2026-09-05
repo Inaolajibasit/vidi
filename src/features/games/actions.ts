@@ -11,6 +11,7 @@ import {
 import { trackServerAnalytics } from "@/lib/analytics/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getGameIdentity } from "@/features/games/identity";
+import { consumeRateLimit } from "@/lib/security/rate-limit";
 import {
   createGameSchema,
   GAME_MODE_DETAILS,
@@ -19,7 +20,9 @@ import {
 const INVITE_ATTEMPTS = 5;
 const NETWORK_RETRY_DELAYS = [250, 750] as const;
 
-function isTransportFailure(error: { details?: string; message?: string } | null) {
+function isTransportFailure(
+  error: { details?: string; message?: string } | null,
+) {
   const description = `${error?.message ?? ""} ${error?.details ?? ""}`;
   return /fetch failed|ENOTFOUND|ECONNRESET|ETIMEDOUT/i.test(description);
 }
@@ -70,6 +73,9 @@ export async function createGameAction(
   let inviteCode: string | undefined;
 
   try {
+    if (!(await consumeRateLimit("game_create", 10, 3_600))) {
+      return { message: "Too many games created. Try again later." };
+    }
     const admin = getSupabaseAdmin();
     const movieCount = GAME_MODE_DETAILS[parsed.data.mode].movieCount;
     const identity = await getGameIdentity({
@@ -79,12 +85,12 @@ export async function createGameAction(
 
     if (!identity) throw new Error("Could not establish a host identity.");
 
-    let movieResponse = await admin.rpc(
-      "get_deck_candidates",
-      { p_limit: 3_000 },
-    );
+    let movieResponse = await admin.rpc("get_deck_candidates", {
+      p_limit: 3_000,
+    });
     for (const delay of NETWORK_RETRY_DELAYS) {
-      if (!movieResponse.error || !isTransportFailure(movieResponse.error)) break;
+      if (!movieResponse.error || !isTransportFailure(movieResponse.error))
+        break;
       await wait(delay);
       movieResponse = await admin.rpc("get_deck_candidates", {
         p_limit: 3_000,

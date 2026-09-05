@@ -5,6 +5,7 @@ import { claimGuestHistoryForUser } from "@/features/auth/claim-guest-history";
 import { isNewAuthUser } from "@/features/auth/is-new-user";
 import { trackServerAnalytics } from "@/lib/analytics/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { safeInternalPath } from "@/lib/security/redirects";
 
 const allowedTypes = new Set<EmailOtpType>([
   "email",
@@ -17,8 +18,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const tokenHash = url.searchParams.get("token_hash");
   const rawType = url.searchParams.get("type") as EmailOtpType | null;
-  const rawNext = url.searchParams.get("next");
-  const next = rawNext?.startsWith("/") ? rawNext : "/profile";
+  const next = safeInternalPath(url.searchParams.get("next"), "/profile");
   const client = await createSupabaseServerClient();
 
   if (!client || !tokenHash || !rawType || !allowedTypes.has(rawType)) {

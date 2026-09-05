@@ -3,13 +3,12 @@ import { claimGuestHistoryForUser } from "@/features/auth/claim-guest-history";
 import { isNewAuthUser } from "@/features/auth/is-new-user";
 import { trackServerAnalytics } from "@/lib/analytics/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { safeInternalPath } from "@/lib/security/redirects";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const next = url.searchParams.get("next")?.startsWith("/")
-    ? url.searchParams.get("next")!
-    : "/profile";
+  const next = safeInternalPath(url.searchParams.get("next"), "/profile");
   const client = await createSupabaseServerClient();
   if (!client || !code)
     return NextResponse.redirect(new URL("/auth?error=invalid_callback", url));

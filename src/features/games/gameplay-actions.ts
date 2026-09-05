@@ -13,6 +13,7 @@ import {
 } from "@/features/games/validation";
 import { calculateAndStoreResults } from "@/features/results/calculate-results";
 import { trackServerAnalytics } from "@/lib/analytics/server";
+import { consumeRateLimit } from "@/lib/security/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 const answerSchema = z
@@ -43,6 +44,7 @@ export async function ensureGameResultsAction(
   if (!inviteCode.success) return "error";
 
   try {
+    if (!(await consumeRateLimit("result_read", 60, 60))) return "error";
     const admin = getSupabaseAdmin();
     const { data: game } = await admin
       .from("games")
@@ -91,21 +93,25 @@ export async function recordAnswerAction(
     return { error: "Invalid movie answer.", success: false };
 
   try {
+    if (!(await consumeRateLimit("game_answer", 400, 1_200))) {
+      return {
+        error: "Too many answers. Wait a moment and retry.",
+        success: false,
+      };
+    }
     const admin = getSupabaseAdmin();
     const identity = await getGameIdentity({ loadDisplayName: false });
-    if (!identity) return { error: "Player session not found.", success: false };
+    if (!identity)
+      return { error: "Player session not found.", success: false };
 
-    const { data, error } = await admin.rpc(
-      "record_game_answer_by_identity",
-      {
+    const { data, error } = await admin.rpc("record_game_answer_by_identity", {
       p_guest_session_id: identity.guestSessionId,
       p_invite_code: parsed.data.inviteCode,
       p_profile_id: identity.profileId,
       p_reaction: parsed.data.reaction,
       p_seen: parsed.data.seen,
       p_tmdb_id: parsed.data.tmdbId,
-      },
-    );
+    });
 
     if (error) throw error;
     const result = z

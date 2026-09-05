@@ -12,6 +12,7 @@ import {
   getShareCardData,
   type ShareCardData,
 } from "@/features/results/share-card-data";
+import { consumeRateLimit } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -95,6 +96,9 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ inviteCode: string }> },
 ) {
+  if (!(await consumeRateLimit("share_card", 60, 3_600))) {
+    return Response.json({ error: "Too many requests." }, { status: 429 });
+  }
   const { inviteCode } = await params;
   const data = await getShareCardData(inviteCode);
   if (!data) {

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
 import { trackServerAnalytics } from "@/lib/analytics/server";
+import { consumeRateLimit } from "@/lib/security/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import {
   getGameIdentity,
@@ -45,6 +46,9 @@ export async function joinGameAction(
   const { displayName, inviteCode } = parsed.data;
 
   try {
+    if (!(await consumeRateLimit("game_join", 30, 900))) {
+      return { message: "Too many join attempts. Try again later." };
+    }
     const admin = getSupabaseAdmin();
     const { data: game, error: gameError } = await admin
       .from("games")

@@ -3,7 +3,15 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 const schema = z.object({
-  avatarUrl: z.union([z.literal(""), z.url().max(2048)]),
+  avatarUrl: z.union([
+    z.literal(""),
+    z
+      .url()
+      .max(2048)
+      .refine((value) => new URL(value).protocol === "https:", {
+        message: "Avatar URLs must use HTTPS.",
+      }),
+  ]),
   displayName: z.string().trim().min(1).max(50),
   username: z
     .string()

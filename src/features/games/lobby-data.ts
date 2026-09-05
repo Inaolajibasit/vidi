@@ -7,6 +7,7 @@ import {
 } from "@/features/games/identity";
 import { inviteCodeSchema } from "@/features/games/validation";
 import type { GameMode, GameStatus } from "@/types/database";
+import { consumeRateLimit } from "@/lib/security/rate-limit";
 
 export interface LobbyData {
   authenticated: boolean;
@@ -28,6 +29,7 @@ export async function getLobbyData(
 ): Promise<LobbyData | null> {
   const parsedCode = inviteCodeSchema.safeParse(rawInviteCode);
   if (!parsedCode.success) return null;
+  if (!(await consumeRateLimit("lobby_read", 120, 3_600))) return null;
 
   try {
     const admin = getSupabaseAdmin();

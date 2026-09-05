@@ -9,8 +9,13 @@ import { getGameIdentity } from "@/features/games/identity";
 import { generateInviteCode } from "@/lib/algorithms/game-deck";
 import { trackServerAnalytics } from "@/lib/analytics/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { consumeRateLimit } from "@/lib/security/rate-limit";
 
-const codeSchema = z.string().trim().toUpperCase().regex(/^[A-Z0-9]{6,12}$/);
+const codeSchema = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^[A-Z0-9]{6,12}$/);
 const startSchema = z.object({
   code: codeSchema,
   displayName: z.string().trim().min(1).max(50),
@@ -46,9 +51,14 @@ function challengeStartMessage(error: unknown) {
 
 export async function createChallengeAction(formData: FormData) {
   const inviteCode = codeSchema.safeParse(formData.get("inviteCode"));
+  if (!(await consumeRateLimit("challenge_start", 20, 3_600))) {
+    redirect(inviteCode.success ? `/results/${inviteCode.data}` : "/");
+  }
   const identity = await getGameIdentity({ loadDisplayName: false });
   if (!inviteCode.success || !identity?.profileId) {
-    redirect(`/auth?next=${encodeURIComponent(`/results/${inviteCode.success ? inviteCode.data : ""}`)}`);
+    redirect(
+      `/auth?next=${encodeURIComponent(`/results/${inviteCode.success ? inviteCode.data : ""}`)}`,
+    );
   }
 
   const admin = getSupabaseAdmin();
@@ -57,7 +67,8 @@ export async function createChallengeAction(formData: FormData) {
     .select("id, status")
     .eq("invite_code", inviteCode.data)
     .maybeSingle();
-  if (!game || game.status !== "completed") redirect(`/results/${inviteCode.data}`);
+  if (!game || game.status !== "completed")
+    redirect(`/results/${inviteCode.data}`);
 
   const { data: player } = await admin
     .from("game_players")
@@ -102,11 +113,7 @@ export async function createChallengeAction(formData: FormData) {
         event_type: "challenge_created",
         profile_id: identity.profileId,
       });
-      await trackServerAnalytics(
-        "challenge_created",
-        {},
-        challenge.id,
-      );
+      await trackServerAnalytics("challenge_created", {}, challenge.id);
       redirect(`/challenge/${code}`);
     }
     if (error.code !== "23505") throw error;
@@ -118,6 +125,7 @@ export async function createChallengeAction(formData: FormData) {
 export async function trackChallengeOpenedAction(rawCode: string) {
   const code = codeSchema.safeParse(rawCode);
   if (!code.success) return;
+  if (!(await consumeRateLimit("analytics", 120, 3_600))) return;
   const admin = getSupabaseAdmin();
   const { data: challenge } = await admin
     .from("challenges")
@@ -148,6 +156,9 @@ export async function startChallengeAction(
 
   let startedGameCode: string | null = null;
   try {
+    if (!(await consumeRateLimit("challenge_start", 20, 3_600))) {
+      return { message: "Too many challenge attempts. Try again later." };
+    }
     const admin = getSupabaseAdmin();
     const { data: challenge } = await admin
       .from("challenges")
@@ -155,7 +166,8 @@ export async function startChallengeAction(
       .eq("code", parsed.data.code)
       .eq("active", true)
       .maybeSingle();
-    if (!challenge) return { message: "This challenge is no longer available." };
+    if (!challenge)
+      return { message: "This challenge is no longer available." };
 
     const identity = await getGameIdentity({
       createGuest: true,
@@ -163,7 +175,9 @@ export async function startChallengeAction(
     });
     if (!identity) return { message: "Could not create your player session." };
     if (identity.profileId === challenge.creator_profile_id) {
-      return { message: "You created this challenge. Send the link to someone else." };
+      return {
+        message: "You created this challenge. Send the link to someone else.",
+      };
     }
 
     for (let attempt = 0; attempt < CODE_ATTEMPTS; attempt += 1) {

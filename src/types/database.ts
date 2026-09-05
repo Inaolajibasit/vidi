@@ -331,6 +331,15 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
+      consume_request_rate_limit: {
+        Args: {
+          p_actor_hash: string;
+          p_limit: number;
+          p_scope: string;
+          p_window_seconds: number;
+        };
+        Returns: boolean;
+      };
       claim_guest_history: {
         Args: { p_guest_session_id: string; p_user_id: string };
         Returns: Json;

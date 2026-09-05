@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { trackServerAnalytics } from "@/lib/analytics/server";
+import { consumeRateLimit } from "@/lib/security/rate-limit";
 
 export interface FriendActionState {
   message?: string;
@@ -39,6 +40,12 @@ export async function sendFriendRequestAction(
   const username = usernameSchema.safeParse(formData.get("username"));
   if (!username.success)
     return { message: "Enter a valid username.", success: false };
+  if (!(await consumeRateLimit("friend_request", 20, 3_600))) {
+    return {
+      message: "Too many friend requests. Try again later.",
+      success: false,
+    };
+  }
   const auth = await authenticatedClient();
   if (!auth) return { message: "Sign in to add friends.", success: false };
 
