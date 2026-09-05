@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 
+import { InstallPrompt } from "@/components/pwa/install-prompt";
 import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration";
 
 import "@fontsource-variable/montserrat";
@@ -58,6 +59,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body>
         {children}
+        <InstallPrompt />
         <ServiceWorkerRegistration />
       </body>
     </html>

@@ -53,3 +53,16 @@ test("offline fallback is self-contained and gives a recovery action", async () 
   assert.match(offline, /location\.reload\(\)/);
   assert.doesNotMatch(offline, /<script src=|<link rel="stylesheet"/);
 });
+
+test("install prompt handles native installation and standalone mode", async () => {
+  const prompt = await readFile(
+    new URL("../src/components/pwa/install-prompt.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(prompt, /beforeinstallprompt/);
+  assert.match(prompt, /appinstalled/);
+  assert.match(prompt, /display-mode: standalone/);
+  assert.match(prompt, /Add to Home Screen/);
+  assert.match(prompt, /localStorage\.setItem/);
+});
