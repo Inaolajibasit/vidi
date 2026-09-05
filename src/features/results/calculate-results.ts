@@ -11,6 +11,12 @@ import { trackServerAnalytics } from "@/lib/analytics/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { CompatibilityResultInsert } from "@/types/database";
 import { GAME_MODE_DETAILS } from "@/features/games/validation";
+import {
+  calculateGroupKnowledge,
+  calculatePlayerKnowledge,
+  moviesSeenByEveryone,
+  sharedGroupFavouriteIds,
+} from "@/features/results/result-summaries";
 
 export async function calculateAndStoreResults(gameId: string) {
   const admin = getSupabaseAdmin();
@@ -79,7 +85,9 @@ export async function calculateAndStoreResults(gameId: string) {
   const result = calculateGroupCompatibility(resultPlayers, [
     ...attributesByMovie.values(),
   ]);
-  const movieMetadata = new Map((movies ?? []).map((movie) => [movie.id, movie]));
+  const movieMetadata = new Map(
+    (movies ?? []).map((movie) => [movie.id, movie]),
+  );
   const keywordNamesByMovie = new Map<string, string[]>();
   (keywords ?? []).forEach((keyword) => {
     const names = keywordNamesByMovie.get(keyword.movie_id) ?? [];
@@ -120,15 +128,27 @@ export async function calculateAndStoreResults(gameId: string) {
       voteAverage: Number(movieMetadata.get(movie.movieId)?.vote_average ?? 0),
     })),
   );
+  const deckSize = movieIds.length;
+  const playerById = new Map(
+    resultPlayers.map((player) => [player.id, player]),
+  );
 
   const rows: CompatibilityResultInsert[] = result.pairs.map((pair) => {
+    const pairPlayers = pair.playerIds.map((id) => playerById.get(id)!);
     return {
       compared_player_id: pair.playerIds[1],
       disagreement_movie_ids: pair.disagreementMovieIds,
       game_id: gameId,
-      knowledge_score: pair.knowledgeOverlap,
+      knowledge_score:
+        pairPlayers.reduce(
+          (sum, player) => sum + calculatePlayerKnowledge(player, deckSize),
+          0,
+        ) / pairPlayers.length,
       knowledge_winner_player_id: pair.knowledgeWinnerPlayerId,
-      metrics: { ratingAgreement: pair.ratingAgreement },
+      metrics: {
+        knowledgeOverlap: pair.knowledgeOverlap,
+        ratingAgreement: pair.ratingAgreement,
+      },
       overall_score: pair.overallCompatibility,
       shared_favourite_movie_ids: pair.sharedFavouriteMovieIds,
       shared_seen_count: pair.moviesBothSeen,
@@ -138,11 +158,9 @@ export async function calculateAndStoreResults(gameId: string) {
     };
   });
   rows.push({
-    disagreement_movie_ids: [],
+    disagreement_movie_ids: result.lowestCompatibilityPair.disagreementMovieIds,
     game_id: gameId,
-    knowledge_score:
-      result.pairs.reduce((sum, pair) => sum + pair.knowledgeOverlap, 0) /
-      result.pairs.length,
+    knowledge_score: calculateGroupKnowledge(resultPlayers, deckSize),
     knowledge_winner_player_id: result.knowledgeWinnerPlayerId,
     metrics: {
       highestPair: result.highestCompatibilityPair.playerIds,
@@ -157,11 +175,8 @@ export async function calculateAndStoreResults(gameId: string) {
       ),
     },
     overall_score: result.groupCompatibility,
-    shared_favourite_movie_ids: [],
-    shared_seen_count: Math.round(
-      result.pairs.reduce((sum, pair) => sum + pair.moviesBothSeen, 0) /
-        result.pairs.length,
-    ),
+    shared_favourite_movie_ids: sharedGroupFavouriteIds(resultPlayers),
+    shared_seen_count: moviesSeenByEveryone(resultPlayers).length,
     taste_score:
       result.pairs.reduce((sum, pair) => sum + pair.tasteMatch, 0) /
       result.pairs.length,
@@ -176,7 +191,12 @@ export async function calculateAndStoreResults(gameId: string) {
   const { error: insertError } = await admin
     .from("compatibility_results")
     .insert(rows);
-  if (insertError) throw insertError;
+  // Several final answers can request result recovery simultaneously. The
+  // multi-row insert is atomic, so a uniqueness conflict means another
+  // request has already stored the result set and can safely win the race.
+  if (insertError && insertError.code !== "23505") {
+    throw insertError;
+  }
   const { data: completedGame, error: completeError } = await admin
     .from("games")
     .update({ completed_at: new Date().toISOString(), status: "completed" })

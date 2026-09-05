@@ -7,6 +7,7 @@ import {
 import { inviteCodeSchema } from "@/features/games/validation";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { MovieReaction } from "@/types/database";
+import { selectViewerDisagreementPair } from "@/features/results/result-summaries";
 
 export interface VerdictMovie {
   id: string;
@@ -76,7 +77,9 @@ function playerPersonality(metrics: unknown, playerId: string) {
         )
       : fallback.reasons,
     score:
-      typeof personality.score === "number" ? personality.score : fallback.score,
+      typeof personality.score === "number"
+        ? personality.score
+        : fallback.score,
   };
 }
 
@@ -122,6 +125,18 @@ export async function getVerdictData(
   );
   if (!players || !currentPlayer) return null;
 
+  const [{ count: deckSize }, { count: currentSeenCount }] = await Promise.all([
+    admin
+      .from("game_movies")
+      .select("movie_id", { count: "exact", head: true })
+      .eq("game_id", game.id),
+    admin
+      .from("ratings")
+      .select("movie_id", { count: "exact", head: true })
+      .eq("game_player_id", currentPlayer.id)
+      .eq("seen", true),
+  ]);
+
   const { data: results } = await admin
     .from("compatibility_results")
     .select("*")
@@ -132,7 +147,12 @@ export async function getVerdictData(
   const groupResult = (results ?? []).find(
     (result) => !result.subject_player_id,
   );
-  const displayPair = pairResults.toSorted(
+  const viewerPairs = pairResults.filter(
+    (result) =>
+      result.subject_player_id === currentPlayer.id ||
+      result.compared_player_id === currentPlayer.id,
+  );
+  const displayPair = viewerPairs.toSorted(
     (a, b) => b.overall_score - a.overall_score,
   )[0];
   const primary =
@@ -149,12 +169,14 @@ export async function getVerdictData(
     ? myWatchlistIds
     : displayPair.watchlist_movie_ids;
 
-  const disagreementId = pairResults
-    .flatMap((result) => result.disagreement_movie_ids)
-    .sort()[0];
+  const disagreementPair = selectViewerDisagreementPair(
+    viewerPairs,
+    currentPlayer.id,
+  );
+  const disagreementId = disagreementPair?.disagreement_movie_ids[0];
   const movieIds = [
     ...new Set([
-      ...displayPair.shared_favourite_movie_ids,
+      ...primary.shared_favourite_movie_ids,
       ...ourWatchlistIds,
       ...resolvedMyWatchlistIds,
       ...(disagreementId ? [disagreementId] : []),
@@ -221,6 +243,10 @@ export async function getVerdictData(
         .select("game_player_id, reaction")
         .eq("game_id", game.id)
         .eq("movie_id", disagreementId)
+        .in("game_player_id", [
+          disagreementPair!.subject_player_id!,
+          disagreementPair!.compared_player_id!,
+        ])
         .not("reaction", "is", null)
     : { data: [] };
   const winnerId =
@@ -248,13 +274,13 @@ export async function getVerdictData(
     inviteCode: game.invite_code,
     isAuthenticated: Boolean(identity?.profileId),
     moviesRated: currentPlayer.progress,
-    knowledgeScore: Number(primary.knowledge_score),
+    knowledgeScore: deckSize ? ((currentSeenCount ?? 0) / deckSize) * 100 : 0,
     knowledgeWinner: winnerId ? (nameMap.get(winnerId) ?? null) : null,
     moviesBothSeen: primary.shared_seen_count,
     overallScore: Number(primary.overall_score),
     personality: playerPersonality(groupResult?.metrics, currentPlayer.id),
     playerNames: players.map((player) => player.display_name),
-    sharedFavourites: displayPair.shared_favourite_movie_ids.flatMap(
+    sharedFavourites: primary.shared_favourite_movie_ids.flatMap(
       (id) => movieMap.get(id) ?? [],
     ),
     tasteScore: Number(primary.taste_score),

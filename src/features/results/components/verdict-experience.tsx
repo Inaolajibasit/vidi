@@ -163,7 +163,11 @@ export function VerdictExperience({
           </Reveal>
           <Reveal>
             <div className="py-14">
-              <p className="text-label text-muted">Movies both seen</p>
+              <p className="text-label text-muted">
+                {verdict.playerNames.length > 2
+                  ? "Movies everyone has seen"
+                  : "Movies both seen"}
+              </p>
               <p className="font-display text-accent mt-4 text-8xl font-black tracking-[-0.06em]">
                 {verdict.moviesBothSeen}
               </p>

@@ -53,8 +53,9 @@ export async function getShareCardData(
   if (!primary || !displayPair || players.length < 2) return null;
 
   const disagreementId = pairResults
-    .flatMap((result) => result.disagreement_movie_ids)
-    .sort()[0];
+    .filter((result) => result.disagreement_movie_ids.length)
+    .toSorted((a, b) => Number(a.overall_score) - Number(b.overall_score))[0]
+    ?.disagreement_movie_ids[0];
   const { data: disagreementMovie } = disagreementId
     ? await admin
         .from("movies")
@@ -69,7 +70,7 @@ export async function getShareCardData(
     inviteCode: game.invite_code,
     knowledgeScore: Math.round(Number(primary.knowledge_score)),
     playerNames: players.map((player) => player.display_name),
-    sharedFavouritesCount: displayPair.shared_favourite_movie_ids.length,
+    sharedFavouritesCount: primary.shared_favourite_movie_ids.length,
     tasteScore: Math.round(Number(primary.taste_score)),
   };
 }

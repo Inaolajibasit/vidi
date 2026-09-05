@@ -93,7 +93,9 @@ export async function recordAnswerAction(
     return { error: "Invalid movie answer.", success: false };
 
   try {
-    if (!(await consumeRateLimit("game_answer", 400, 1_200))) {
+    // A full five-player No Life game can legitimately submit 1,000 answers
+    // from one household IP within this window. Keep headroom for retries.
+    if (!(await consumeRateLimit("game_answer", 1_500, 1_200))) {
       return {
         error: "Too many answers. Wait a moment and retry.",
         success: false,
