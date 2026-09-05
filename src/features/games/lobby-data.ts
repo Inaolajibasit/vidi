@@ -29,7 +29,9 @@ export async function getLobbyData(
 ): Promise<LobbyData | null> {
   const parsedCode = inviteCodeSchema.safeParse(rawInviteCode);
   if (!parsedCode.success) return null;
-  if (!(await consumeRateLimit("lobby_read", 120, 3_600))) {
+  // Lobby pages refresh frequently while several participants join from the
+  // same household or mobile network, so this limit must allow shared-IP play.
+  if (!(await consumeRateLimit("lobby_read", 1_000, 3_600))) {
     throw new Error("Lobby lookup is temporarily unavailable.");
   }
 

@@ -1,5 +1,8 @@
 # vidi test suite
 
+For the complete isolated-environment walkthrough, see
+[`docs/E2E_TEST_ENVIRONMENT_SETUP.md`](../docs/E2E_TEST_ENVIRONMENT_SETUP.md).
+
 Run deterministic unit and domain-integration tests:
 
 ```bash

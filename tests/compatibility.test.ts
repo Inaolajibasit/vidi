@@ -8,6 +8,13 @@ import {
   type ResultPlayer,
   type ResultReaction,
 } from "../src/lib/algorithms/compatibility";
+import {
+  calculateGroupKnowledge,
+  calculatePlayerKnowledge,
+  moviesSeenByEveryone,
+  selectViewerDisagreementPair,
+  sharedGroupFavouriteIds,
+} from "../src/features/results/result-summaries";
 
 const movies: ResultMovieAttributes[] = [
   { genreIds: [1], keywordIds: [10], movieId: "a" },
@@ -162,4 +169,103 @@ test("supports deterministic groups of three through five players", () => {
     five.highestCompatibilityPair.overallCompatibility >=
       five.lowestCompatibilityPair.overallCompatibility,
   );
+});
+
+test("orders every disagreement by reaction distance", () => {
+  const result = calculatePairCompatibility(
+    player("one", [
+      ["a", true, "loved"],
+      ["b", true, "loved"],
+    ]),
+    player("two", [
+      ["a", true, "liked"],
+      ["b", true, "meh"],
+    ]),
+    movies,
+  );
+
+  assert.deepEqual(result.disagreementMovieIds, ["b", "a"]);
+});
+
+test("3 to 5 player summaries use the complete group", () => {
+  const group = [
+    player("p1", [
+      ["a", true, "loved"],
+      ["b", true, "loved"],
+      ["c", false, null],
+      ["d", true, "liked"],
+    ]),
+    player("p2", [
+      ["a", true, "loved"],
+      ["b", true, "liked"],
+      ["c", true, "meh"],
+      ["d", false, null],
+    ]),
+    player("p3", [
+      ["a", true, "loved"],
+      ["b", true, "loved"],
+      ["c", true, "meh"],
+      ["d", true, "liked"],
+    ]),
+    player("p4", [
+      ["a", true, "loved"],
+      ["b", true, "loved"],
+      ["c", false, null],
+      ["d", false, null],
+    ]),
+    player("p5", [
+      ["a", true, "loved"],
+      ["b", true, "meh"],
+      ["c", true, "liked"],
+      ["d", false, null],
+    ]),
+  ];
+
+  assert.equal(calculatePlayerKnowledge(group[0], 4), 75);
+
+  for (const size of [3, 4, 5]) {
+    const players = group.slice(0, size);
+    assert.deepEqual(sharedGroupFavouriteIds(players), ["a"]);
+    assert.deepEqual(moviesSeenByEveryone(players), ["a", "b"]);
+    assert.equal(
+      calculateGroupKnowledge(players, 4),
+      players.reduce(
+        (sum, current) => sum + calculatePlayerKnowledge(current, 4),
+        0,
+      ) / size,
+    );
+    assert.deepEqual(
+      sharedGroupFavouriteIds([...players].reverse()),
+      sharedGroupFavouriteIds(players),
+    );
+  }
+});
+
+test("viewer disagreements never come from an unrelated pair", () => {
+  const pairs = [
+    {
+      compared_player_id: "p2",
+      disagreement_movie_ids: ["a"],
+      overall_score: 40,
+      subject_player_id: "p1",
+    },
+    {
+      compared_player_id: "p4",
+      disagreement_movie_ids: ["b"],
+      overall_score: 5,
+      subject_player_id: "p3",
+    },
+    {
+      compared_player_id: "p3",
+      disagreement_movie_ids: ["c"],
+      overall_score: 20,
+      subject_player_id: "p1",
+    },
+  ];
+
+  assert.equal(
+    selectViewerDisagreementPair(pairs, "p1")?.compared_player_id,
+    "p3",
+  );
+  assert.equal(selectViewerDisagreementPair(pairs, "missing"), null);
 });

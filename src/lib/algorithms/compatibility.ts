@@ -193,8 +193,11 @@ export function calculatePairCompatibility(
 
   return {
     disagreementMovieIds: agreements
-      .filter((item) => item.difference === 2)
-      .sort((a, b) => a.movieId.localeCompare(b.movieId))
+      .filter((item) => item.difference > 0)
+      .sort(
+        (a, b) =>
+          b.difference - a.difference || a.movieId.localeCompare(b.movieId),
+      )
       .map((item) => item.movieId),
     knowledgeOverlap: roundScore(knowledgeOverlap),
     knowledgeWinnerPlayerId:
