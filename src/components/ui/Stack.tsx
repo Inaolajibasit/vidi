@@ -137,8 +137,8 @@ function StackLayer({
     const direction: StackDirection = projectedX < 0 ? "left" : "right";
     if (!reducedMotion) {
       await animate(x, direction === "left" ? -EXIT_DISTANCE : EXIT_DISTANCE, {
-        duration: 0.22,
-        ease: [0.2, 0.72, 0.18, 1],
+        duration: 0.38,
+        ease: [0.16, 0.68, 0.22, 1],
         velocity: info.velocity.x,
       });
     }

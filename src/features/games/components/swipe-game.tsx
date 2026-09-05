@@ -809,8 +809,8 @@ function MovieCardContent({
   const seenLabelX = useTransform(x, [0, 104], [8, 0]);
 
   return (
-    <article className="border-border bg-surface relative h-full w-full touch-none overflow-hidden rounded-sm border shadow-2xl shadow-black/40">
-      <div className="bg-surface-strong relative h-[clamp(16rem,52dvh,34rem)] w-full shrink-0">
+    <article className="border-border bg-surface relative flex h-full w-full touch-none flex-col overflow-hidden rounded-sm border shadow-2xl shadow-black/40">
+      <div className="bg-surface-strong relative min-h-0 w-full flex-1">
         {movie.posterUrl && !posterFailed ? (
           <Image
             alt={`${movie.title} poster`}
@@ -862,7 +862,7 @@ function MovieCardContent({
           Seen
         </motion.span>
       </div>
-      <div className="flex min-h-22 items-end justify-between gap-4 p-4">
+      <div className="flex min-h-22 shrink-0 items-end justify-between gap-4 p-4">
         <h1 className="text-title line-clamp-2">{movie.title}</h1>
         <p className="text-muted shrink-0 pb-0.5 text-right text-sm">
           {movie.releaseYear ?? "—"}
