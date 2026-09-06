@@ -65,4 +65,27 @@ test("install prompt handles native installation and standalone mode", async () 
   assert.match(prompt, /display-mode: standalone/);
   assert.match(prompt, /Add to Home Screen/);
   assert.match(prompt, /localStorage\.setItem/);
+  assert.match(prompt, /aria-modal="true"/);
+  assert.match(prompt, /event\.key === "Escape"/);
+  assert.match(prompt, /event\.key !== "Tab"/);
+  assert.match(prompt, /dismissButtonRef\.current\?\.focus/);
+});
+
+test("global accessibility protections remain enabled", async () => {
+  const [layout, styles, background] = await Promise.all([
+    readFile(new URL("../src/app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/globals.css", import.meta.url), "utf8"),
+    readFile(
+      new URL(
+        "../src/components/ui/deferred-pixel-blast.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  ]);
+
+  assert.match(layout, /href="#main-content"/);
+  assert.match(layout, /id="main-content"/);
+  assert.match(styles, /prefers-reduced-motion: reduce/);
+  assert.match(background, /!ready \|\| reducedMotion/);
 });

@@ -57,14 +57,14 @@ export function DeferredPixelBlast() {
     };
   }, []);
 
-  if (!ready) return null;
+  if (!ready || reducedMotion) return null;
 
   return (
     <PixelBlast
       antialias={false}
       color="#2227F7"
       edgeFade={0.18}
-      enableRipples={!reducedMotion}
+      enableRipples
       patternDensity={0.72}
       patternScale={2.4}
       pixelSize={5}
@@ -72,7 +72,7 @@ export function DeferredPixelBlast() {
       rippleIntensityScale={1.15}
       rippleSpeed={0.34}
       rippleThickness={0.1}
-      speed={reducedMotion ? 0 : 0.16}
+      speed={0.16}
       transparent
       variant="square"
     />
