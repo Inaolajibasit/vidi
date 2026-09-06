@@ -1,97 +1,281 @@
-# vidi Deployment Guide
+# vidi production deployment
 
-This guide deploys vidi for mobile, account, friendship, multiplayer, and authentication testing.
+This runbook prepares and releases vidi on Vercel with a production Supabase
+project. That can be a new project or an existing vidi project that has been
+carefully promoted to production. Production, Preview, E2E, and local data must
+remain separate after promotion.
 
-## Hosting architecture
+Do not deploy until every item in the final checklist is complete.
 
-vidi requires two hosted services:
-
-- **Vercel** hosts the Next.js application, server components, route handlers, server actions, poster proxy, and server-side logic.
-- **Supabase** hosts PostgreSQL, authentication, Realtime, database functions, and Row Level Security policies.
-
-You do not need to deploy a separate Express or Node.js backend.
+## 1. Architecture
 
 ```text
-Phone or browser
-       |
-       v
-Vercel — vidi Next.js application
-       |
-       +-- Supabase Auth, PostgreSQL and Realtime
-       +-- TMDB API
+Browser or installed PWA
+          |
+          v
+Vercel: Next.js application
+          |
+          +-- Supabase Auth
+          +-- Supabase PostgreSQL, RLS, and database functions
+          +-- Supabase Realtime
+          +-- TMDB API and poster images
 ```
 
-A custom domain is not required. Vercel automatically provides an HTTPS address such as `https://vidi-game.vercel.app`, which is sufficient for mobile, OAuth, accounts, friendships, and Realtime testing.
+A Preview deployment can mutate data just like Production. Preview must use
+isolated test credentials or no write-capable credentials; it must never inherit
+the production service-role key.
 
-Official references:
+## 2. Environment variables
 
-- [Vercel domains](https://vercel.com/docs/domains/working-with-domains)
-- [Vercel Git deployments](https://vercel.com/docs/git)
-- [Supabase deployment](https://supabase.com/docs/guides/deployment)
+| Variable                        | Exposure    | Required                | Purpose                                                     |
+| ------------------------------- | ----------- | ----------------------- | ----------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Browser     | Yes                     | Production Supabase project URL                             |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Browser     | Yes                     | Supabase publishable key; RLS is the authorization boundary |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Server only | Yes                     | Trusted server actions, result calculation, and maintenance |
+| `TMDB_ACCESS_TOKEN`             | Server only | One TMDB credential     | Preferred TMDB API Read Access Token                        |
+| `TMDB_API_KEY`                  | Server only | One TMDB credential     | Supported v3-key alternative                                |
+| `NEXT_PUBLIC_APP_URL`           | Browser     | Yes                     | Exact canonical origin, including `https://`                |
+| `NEXT_PUBLIC_LEGAL_EMAIL`       | Browser     | Recommended             | Monitored privacy and support contact                       |
+| `ENABLE_CHALLENGES`             | Server      | Recommended             | Keep `false` for MVP                                        |
+| `ENABLE_DEFAULT_LIKE_ON_SWIPE`  | Server      | Recommended             | Keep `false` unless the product decision changes            |
+| `ANALYTICS_PROVIDER`            | Server      | Recommended             | `disabled` or `supabase`                                    |
+| `ANALYTICS_HASH_SECRET`         | Server only | With Supabase analytics | Random value of at least 32 characters                      |
+| `MOVIE_SYNC_TARGET`             | Script      | Optional                | Movie pool from 3,000 to 5,000; default 4,000               |
 
-## 1. Prepare the repository
+Never prefix a secret with `NEXT_PUBLIC_`. Never put real secrets in examples,
+documentation, screenshots, issues, client components, or browser responses.
+Use the stable production domain for `NEXT_PUBLIC_APP_URL`, including `https://`.
+Vercel environment changes apply only to subsequent deployments.
 
-Run the complete verification suite:
+## 3. Supabase production project
+
+1. Create a Supabase project dedicated to production.
+2. Store its database password in a password manager.
+3. Record its Project URL, publishable key, and secret/service-role key.
+4. Verify scheduled backups or enable Point-in-Time Recovery when available.
+5. Open Security Advisor and resolve unexpected findings.
+6. Configure appropriate usage and spending alerts.
+
+Do not copy test users, games, E2E rate-limit rows, or seed data into production.
+
+### Promoting the original vidi project
+
+Use this path when the Supabase project limit prevents creating another project.
+After promotion, the original project becomes production and must no longer be
+used for automated E2E testing.
+
+#### A. Protect the project first
+
+1. Open the original vidi project in Supabase and confirm its name and project
+   reference under **Project Settings > General**.
+2. Record the project reference, Project URL, publishable key, and secret/service
+   role key in a password manager. Do not paste them into documentation.
+3. Enable MFA for the Supabase account and any linked GitHub account.
+4. Open **Database > Backups** and confirm a recoverable backup exists.
+5. If the current plan does not provide the required backup or export, create a
+   database export before cleaning data or applying migrations.
+
+Do not delete test data or change the schema until the backup step is complete.
+
+##### Create a logical export on plans without downloadable backups
+
+prompt to give chat when i start again 
+Read AGENTS.md, docs/SESSION_HANDOFF.md, and DEPLOYMENT.md, inspect Git status, and continue from the exact next task. Do not deploy or change the production database without showing me the reviewed command first
+
+
+Supabase recommends regular CLI exports for free-plan projects. The Supabase CLI
+runs `pg_dump` in a Docker container, so install and start Docker Desktop first:
 
 ```powershell
-npm run lint
-npm run typecheck
-npm test
-npm run build
-git status
+docker --version
+docker info
 ```
 
-Commit and push the project to a private GitHub repository:
+Create the backup outside the Git repository. Change the dated directory for
+each export:
 
 ```powershell
-git add .
-git commit -m "Prepare vidi development deployment"
-git push origin main
+$vidiBackupDir = Join-Path $env:USERPROFILE "Documents\vidi-backups\2026-09-06"
+New-Item -ItemType Directory -Path $vidiBackupDir -Force
 ```
 
-Confirm that `.env.local` is not tracked:
+In Supabase, select **Connect** and record the project reference. Find or reset
+the database password under **Project Settings > Database**. This password is
+different from the publishable key, service-role key, and Supabase account
+password. Never place it in the repository or documentation.
+
+Link and verify the correct project:
 
 ```powershell
-git status --ignored
-git ls-files .env.local
+npx.cmd supabase login
+npx.cmd supabase link --project-ref YOUR_ORIGINAL_PROJECT_REF
+npx.cmd supabase projects list
+npx.cmd supabase db dump --linked --dry-run
 ```
 
-The second command should return nothing.
+Confirm the linked indicator identifies the original vidi project. Then export
+roles, schema, and data one at a time:
 
-Never commit:
+```powershell
+npx.cmd supabase db dump --linked --file "$vidiBackupDir\roles.sql" --role-only
+npx.cmd supabase db dump --linked --file "$vidiBackupDir\schema.sql"
+npx.cmd supabase db dump --linked --file "$vidiBackupDir\data.sql" --data-only --use-copy -x "storage.buckets_vectors" -x "storage.vector_indexes"
+```
 
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `TMDB_API_KEY`
-- `TMDB_ACCESS_TOKEN`
-- Google OAuth client secrets
-- SMTP passwords
+Verify that all three files exist and are non-empty, then generate hashes:
 
-## 2. Prepare the live Supabase database
+```powershell
+Get-ChildItem -LiteralPath $vidiBackupDir |
+  Select-Object Name, Length, LastWriteTime
 
-The live Supabase project is the vidi backend. It is not deployed through Vercel.
+Get-FileHash -Algorithm SHA256 -LiteralPath "$vidiBackupDir\roles.sql"
+Get-FileHash -Algorithm SHA256 -LiteralPath "$vidiBackupDir\schema.sql"
+Get-FileHash -Algorithm SHA256 -LiteralPath "$vidiBackupDir\data.sql"
+```
 
-Apply every migration that has not already been executed, in filename order. Do not rerun initial migrations blindly if the tables already exist.
+Keep two protected copies, such as one local copy and one encrypted cloud or
+external-drive copy. Database exports contain sensitive user data and must never
+be committed, uploaded publicly, or shared in support messages.
 
-The latest required migrations include:
+This is a logical application backup, not a complete Supabase platform snapshot.
+It does not include Vercel variables, project secrets, Auth provider settings,
+SMTP configuration, or the actual files in Storage buckets. Export Storage
+objects separately if vidi begins using Supabase Storage.
+
+The direct database endpoint requires IPv6 on free projects. If it is
+unreachable, copy the **Session pooler** connection from Supabase's **Connect**
+dialog and follow the CLI's `--db-url` workflow. Use session mode on port 5432,
+not transaction mode on port 6543, for backup operations. Avoid putting a
+connection string containing the password into shell history.
+
+Never run this command against the promoted project:
+
+```powershell
+npx.cmd supabase db reset --linked
+```
+
+It destroys remote data and replays local migrations. After verifying the three
+export files, continue with the migration inspection in subsection C.
+
+#### B. Retire it as a test environment
+
+- Never point `VIDI_E2E_BASE_URL` at the production application.
+- Never run the Playwright multiplayer suite or security probe against this
+  project after promotion.
+- Never apply `supabase/seed.sql` to it.
+- Keep the existing E2E project for destructive automated tests, if available.
+- Use production only for real traffic and small, deliberate smoke tests.
+
+#### C. Link and inspect migration history
+
+From the repository root:
+
+```powershell
+npx.cmd supabase login
+npx.cmd supabase link --project-ref YOUR_ORIGINAL_PROJECT_REF
+npx.cmd supabase migration list
+```
+
+Compare the remote history with the authoritative list in section 4. Before any
+write, preview exactly what Supabase intends to apply:
+
+```powershell
+npx.cmd supabase db push --dry-run
+```
+
+Stop if the output contains unexpected migrations, destructive SQL, or a history
+mismatch. Do not blindly rerun the migration files in SQL Editor. If the dry run
+contains only reviewed missing migrations, apply and verify them:
+
+```powershell
+npx.cmd supabase db push
+npx.cmd supabase migration list
+```
+
+The two final security migrations are mandatory:
 
 ```text
-supabase/migrations/202609010001_personality_system.sql
-supabase/migrations/202609020001_friendships_security.sql
+202609050001_security_hardening.sql
+202609050002_account_attention_reads.sql
 ```
 
-Because the Supabase CLI has caused Windows binary problems on this machine, using Supabase Dashboard → SQL Editor is acceptable during development.
+#### D. Review existing data
 
-Verify the friendship policies:
+The project may contain test accounts, guests, games, ratings, results,
+watchlists, friendships, and rate-limit rows. Keep legitimate user data. Remove
+known test data only after creating a backup and reviewing foreign-key
+relationships. If ownership is uncertain, leaving harmless rows temporarily is
+safer than issuing broad deletion statements.
 
-```sql
-select policyname, cmd
-from pg_policies
-where schemaname = 'public'
-  and tablename = 'friendships'
-order by policyname;
+From this point onward, do not create new E2E data in the project.
+
+#### E. Finish the production conversion
+
+1. Complete the RLS and permission checks in section 5.
+2. Check the movie counts and perform any required sync from section 7.
+3. Configure the exact production Site URL and callbacks in section 6.
+4. Add this project's credentials only to Vercel's Production environment.
+5. Give Preview isolated E2E credentials or no write-capable credentials.
+6. Run the release gate from section 8.
+7. Complete the checklist in section 12 before deploying.
+
+## 4. Database migrations
+
+The authoritative migration chain is:
+
+```text
+202608250001_initial_schema.sql
+202608250002_create_game_rpc.sql
+202608260001_gameplay_answers.sql
+202608260002_deck_candidates.sql
+202608310001_account_conversion.sql
+202609010001_personality_system.sql
+202609020001_friendships_security.sql
+202609040001_google_profile_avatars.sql
+202609040002_structured_watchlists.sql
+202609040003_challenges.sql
+202609040004_monthly_recap_foundation.sql
+202609040005_product_analytics.sql
+202609040006_fast_gameplay_answers.sql
+202609050001_security_hardening.sql
+202609050002_account_attention_reads.sql
 ```
 
-Verify that every exposed table uses RLS:
+### Migration safety
+
+- Never edit an applied migration. Add a new forward-only migration.
+- Never paste the complete chain into the production SQL Editor.
+- Never rerun `initial_schema.sql` against an existing database.
+- Never apply `supabase/seed.sql` to production.
+- Test the identical immutable files on the isolated E2E project first.
+- `202609040002_structured_watchlists.sql` removes duplicate personal watchlist
+  rows before adding its uniqueness constraint. Back up an existing database and
+  inspect those duplicates before applying that migration.
+- Verify a recoverable backup before deleting data, changing column types,
+  adding potentially blocking constraints, or rewriting large tables.
+- Review dry-run output and stop on unexpected or destructive SQL.
+- If local and remote histories disagree, investigate. Do not use
+  `migration repair` merely to suppress the warning.
+
+Use a current Supabase CLI from the repository root:
+
+```powershell
+npx supabase login
+npx supabase link --project-ref YOUR_PRODUCTION_PROJECT_REF
+npx supabase migration list
+npx supabase db push --dry-run
+npx supabase db push
+npx supabase migration list
+```
+
+The initial chain applies once to a new project. Later pushes use migration
+history and apply only new files.
+
+## 5. RLS and permissions
+
+After migration, run these read-only checks in Supabase SQL Editor.
+
+Every public table must have RLS enabled:
 
 ```sql
 select tablename, rowsecurity
@@ -100,353 +284,212 @@ where schemaname = 'public'
 order by tablename;
 ```
 
-All application tables in the `public` schema should report `rowsecurity = true`.
-
-Reference: [Supabase production checklist](https://supabase.com/docs/guides/deployment/going-into-prod)
-
-## 3. Populate the movie library
-
-Do not run the long 3,000–5,000-movie ingestion job as part of a Vercel deployment.
-
-Configure `.env.local` with the live Supabase and TMDB credentials, then run locally:
-
-```powershell
-npm run movies
-```
-
-Verify the resulting data:
+Inspect policies:
 
 ```sql
-select count(*) from public.movies;
-select count(*) from public.movie_genres;
-select count(*) from public.movie_keywords;
+select tablename, policyname, roles, cmd, qual, with_check
+from pg_policies
+where schemaname = 'public'
+order by tablename, policyname;
 ```
 
-The MVP target is approximately 3,000–5,000 movie rows.
+Inspect browser-role function grants:
 
-## 4. Create the Vercel project
-
-1. Sign in to Vercel.
-2. Select **Add New → Project**.
-3. Import the GitHub repository.
-4. Select the vidi repository.
-5. Confirm that the framework preset is **Next.js**.
-6. Keep the root directory set to the repository root.
-7. Keep the standard commands:
-   - Install: `npm install`
-   - Build: `npm run build`
-   - Output: automatic
-8. Choose a project name such as `vidi-game`.
-
-Vercel will deploy new commits automatically when they are pushed to the connected production branch.
-
-## 5. Configure Vercel environment variables
-
-Open Vercel → Project → Settings → Environment Variables.
-
-Add:
-
-```dotenv
-NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_ANON_OR_PUBLISHABLE_KEY
-SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
-TMDB_API_KEY=YOUR_TMDB_API_KEY
-TMDB_ACCESS_TOKEN=YOUR_TMDB_ACCESS_TOKEN
-NEXT_PUBLIC_APP_URL=https://YOUR_PROJECT_NAME.vercel.app
-MOVIE_SYNC_TARGET=4000
+```sql
+select
+  n.nspname as schema_name,
+  p.proname as function_name,
+  has_function_privilege('anon', p.oid, 'execute') as anon_execute,
+  has_function_privilege('authenticated', p.oid, 'execute') as authenticated_execute
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname in ('public', 'private')
+order by n.nspname, p.proname;
 ```
 
-For the first development deployment, applying these to **Production** is sufficient.
+`202609050001_security_hardening.sql` is mandatory. It protects ratings until
+results unlock, revokes direct browser mutations, and restricts trusted
+operations to the service role.
 
-Security rules:
+Run `scripts/security-probe.ts` only against the isolated E2E project after
+changes to ratings, results, games, guest identity, RLS, or service-role code.
 
-- Variables beginning with `NEXT_PUBLIC_` are available to browser code.
-- The Supabase anon or publishable key is designed to be public and protected by RLS.
-- The service-role key must never have a `NEXT_PUBLIC_` prefix.
-- TMDB credentials must remain server-only.
-- Google and SMTP secrets belong in their provider dashboards, not client code.
+## 6. Supabase Auth
 
-Environment-variable changes only affect new deployments. Redeploy after changing a value.
+In **Authentication → URL Configuration**:
 
-Reference: [Vercel environment variables](https://vercel.com/docs/environment-variables)
+- Set Site URL to the exact production origin.
+- Add exact production callbacks:
 
-## 6. Perform the first deployment
+  ```text
+  https://YOUR-DOMAIN/auth/callback
+  https://YOUR-DOMAIN/auth/confirm
+  ```
 
-Select **Deploy** in Vercel.
+- Keep local and Preview redirects separate. Use wildcard redirects only for
+  controlled Preview origins, not the production origin.
 
-After the deployment completes, Vercel will provide an address similar to:
-
-```text
-https://vidi-game.vercel.app
-```
-
-Open the address on desktop and mobile.
-
-If the real address differs from `NEXT_PUBLIC_APP_URL`:
-
-1. Update `NEXT_PUBLIC_APP_URL` in Vercel.
-2. Open **Deployments**.
-3. Redeploy the latest deployment.
-
-Before a polished production launch, update `metadataBase` in `src/app/layout.tsx`. It currently uses `http://localhost:3000` and should derive from `NEXT_PUBLIC_APP_URL`. This normally does not prevent authentication, but it can generate incorrect metadata and social links.
-
-## 7. Configure Supabase production URLs
-
-Open Supabase Dashboard → Authentication → URL Configuration.
-
-Set the Site URL:
-
-```text
-https://vidi-game.vercel.app
-```
-
-Add these redirect URLs:
-
-```text
-http://localhost:3000/**
-https://vidi-game.vercel.app/auth/callback
-https://vidi-game.vercel.app/auth/confirm
-```
-
-Replace the example Vercel address with the actual stable deployment address.
-
-The application constructs OAuth and email redirects from `location.origin`, so every legitimate deployment origin must be allowed by Supabase.
-
-Use exact URLs for production. Wildcard patterns may be used for Vercel preview deployments later.
-
-Reference: [Supabase redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls)
-
-## 8. Configure Google authentication
-
-### Google Cloud
-
-1. Open Google Auth Platform.
-2. Configure Branding and Audience.
-3. If the app is in testing mode, add every Google account that will test vidi.
-4. Create an OAuth Client ID.
-5. Choose **Web application**.
-6. Add authorized JavaScript origins:
-
-```text
-http://localhost:3000
-https://vidi-game.vercel.app
-```
-
-7. Add the Supabase callback as the Authorized redirect URI:
+For Google authentication, configure this provider callback in Google Cloud:
 
 ```text
 https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback
 ```
 
-Google redirects to Supabase first. Do not enter the Vercel `/auth/callback` route as Google's provider callback.
+Configure custom SMTP before relying on email authentication for real users.
+The default Supabase mail service is suitable only for limited testing.
+
+## 7. TMDB and movie sync
+
+Store a TMDB API Read Access Token as `TMDB_ACCESS_TOKEN`. A v3 key in
+`TMDB_API_KEY` is supported as an alternative. Both are server-only.
+
+Do not run movie ingestion in the Vercel build. Run it from a trusted machine
+deliberately connected to production:
+
+```powershell
+npm run movies -- --dry-run
+npm run movies -- --limit=25
+npm run movies
+```
+
+Before every write, inspect `NEXT_PUBLIC_SUPABASE_URL` and confirm its host is
+the intended production project. The launch target is 3,000–5,000 eligible
+movies.
+
+```sql
+select count(*) as movies from public.movies;
+select count(*) as genres from public.genres;
+select count(*) as genre_links from public.movie_genres;
+select count(*) as keyword_links from public.movie_keywords;
+```
+
+See [docs/tmdb-sync.md](./docs/tmdb-sync.md) for checkpoint, retry, reset, and
+concurrency behavior.
+
+## 8. Local development and testing
+
+Use `.env.local` for development or an isolated test project:
+
+```powershell
+Copy-Item .env.example .env.local
+npm install
+npm run dev
+```
+
+Run the release gate:
+
+```powershell
+npm run lint
+npm run typecheck
+npm test
+npm run build
+git status --short
+```
+
+The Playwright suite creates many games and answers. Run it only against the
+environment in [docs/E2E_TEST_ENVIRONMENT_SETUP.md](./docs/E2E_TEST_ENVIRONMENT_SETUP.md),
+never against production.
+
+## 9. Vercel setup
+
+1. Import the GitHub repository into a dedicated Vercel project.
+2. Confirm Next.js framework detection and repository-root configuration.
+3. Set `main` as the Production Branch.
+4. Keep `npm install` and `npm run build` as the standard commands.
+5. Configure section 2 variables separately for Production and Preview.
+6. Give Production only production Supabase credentials.
+7. Give Preview isolated test credentials or no write-capable credentials.
+8. Protect `main` and require verification checks before merging.
+
+Vercel creates Preview deployments for non-production branches and deploys the
+Production Branch after merge. Do not run `vercel --prod` during preparation.
+
+## 10. Custom domain
+
+1. Open **Vercel → Project → Settings → Domains**.
+2. Add the apex domain or chosen subdomain.
+3. Apply the DNS records shown by Vercel at the DNS provider.
+4. Wait for Vercel to confirm the domain and issue HTTPS.
+5. Set `NEXT_PUBLIC_APP_URL` to the final HTTPS origin.
+6. Update Supabase Site URL and exact callback URLs.
+7. Update Google OAuth JavaScript origins if Google sign-in is enabled.
+8. Redeploy only after every URL agrees.
+9. Choose either apex or `www` as canonical and redirect the other.
+
+Never hardcode a deployment domain in application source.
+
+## 11. Release procedure
+
+1. Freeze changes for the release candidate.
+2. Confirm the E2E project has the pending migration chain.
+3. Deploy a Preview with isolated credentials.
+4. Run lint, typecheck, tests, build, the security probe, and 2–5 player E2E.
+5. Verify the production database backup.
+6. Apply reviewed migrations to production with `supabase db push`.
+7. Repeat the RLS and permission checks.
+8. Merge the reviewed release commit into `main`.
+9. Let the Vercel Git integration create the Production deployment.
+10. Smoke-test one two-player Quick game in independent browser sessions.
+11. Verify authentication callbacks, results sharing, and poster delivery.
+12. Inspect Vercel and Supabase runtime logs.
+
+A Vercel rollback does not reverse a database migration. Repair database issues
+with a separately reviewed forward migration.
+
+## 12. Final readiness checklist
+
+### Repository
+
+- [ ] `main` contains only reviewed commits and `git status --short` is empty.
+- [ ] No local env file, `.vercel`, trace, screenshot, or test artifact is tracked.
+- [ ] A tracked-file secret scan finds no real credentials.
+- [ ] No development or deployment URL is hardcoded in application source.
+- [ ] Lint, strict TypeScript, tests, and production build pass.
 
 ### Supabase
 
-1. Open Authentication → Providers → Google.
-2. Enable Google.
-3. Enter the Google Client ID.
-4. Enter the Google Client Secret.
-5. Save.
+- [ ] A dedicated production project and recoverable backup exist.
+- [ ] Migration history matches every file in section 4.
+- [ ] Both `202609050001_security_hardening.sql` and
+      `202609050002_account_attention_reads.sql` are applied.
+- [ ] RLS is enabled on every public table.
+- [ ] Policies and function grants match the reviewed migrations.
+- [ ] Production contains no seed or E2E data.
+- [ ] Auth URLs, providers, and SMTP are configured.
 
-After Google and Supabase finish authentication, Supabase redirects the browser to:
+### Movie data
 
-```text
-https://vidi-game.vercel.app/auth/callback
-```
-
-Reference: [Supabase Google login](https://supabase.com/docs/guides/auth/social-login/auth-google)
-
-## 9. Decide how to test email authentication
-
-Supabase's default mailer is intended only for development:
-
-- It normally sends only to members of the Supabase organization.
-- It has a very low rate limit.
-- It has no production delivery guarantee.
-
-Reference: [Supabase custom SMTP](https://supabase.com/docs/guides/auth/auth-smtp)
-
-Development options:
-
-1. Use Google sign-in with two Google test accounts. This is the simplest option for friendship testing.
-2. Add test addresses as Supabase organization members and use the default mailer.
-3. Configure a development SMTP service such as Resend, Postmark, Brevo, or Mailtrap.
-
-A custom domain is not required for deploying vidi or testing Google authentication. Some SMTP providers may require a verified sender domain before they will deliver messages broadly.
-
-## 10. Configure authentication email templates
-
-vidi supports:
-
-```text
-/auth/callback
-/auth/confirm
-```
-
-When an email flow supplies `redirectTo`, Supabase templates may need to build the confirmation link from `{{ .RedirectTo }}` rather than `{{ .SiteURL }}`.
-
-Example structure:
-
-```html
-<h2>Your vidi sign-in</h2>
-<p>Your one-time code is:</p>
-<p style="font-size: 28px; font-weight: 700; letter-spacing: 6px;">
-  {{ .Token }}
-</p>
-<p>
-  <a href="{{ .RedirectTo }}/auth/confirm?token_hash={{ .TokenHash }}&type=email">
-    Sign in to vidi
-  </a>
-</p>
-```
-
-Check the generated link carefully because the current application also passes a callback path through `redirectTo`.
-
-## 11. Test two authenticated accounts
-
-Use genuinely independent browser sessions:
-
-- Account A: desktop Chrome
-- Account B: phone, another browser, or a private/incognito window
-
-Two ordinary tabs in the same browser profile share the same Supabase session and cannot represent two users reliably.
-
-Test in this order:
-
-1. Open `/auth`.
-2. Create Account A.
-3. Set a username on `/profile`.
-4. Create Account B in the separate session.
-5. Set a different username.
-6. From Account A, open `/friends`.
-7. Send a request to Account B.
-8. Attempt the same request again; it should be rejected.
-9. Switch to Account B.
-10. Open `/friends`.
-11. Accept the request.
-12. Open Account A's public profile.
-13. Select **Start Game**.
-14. Create the game.
-15. Copy the lobby link.
-16. Open it as Account B.
-17. Confirm both players appear through Realtime.
-18. Play through the deck.
-19. Confirm results and personalities appear.
-20. Remove the friendship.
-21. Confirm neither user lists the other as a friend.
-22. Send another request and test decline.
-
-Also verify:
-
-- Users cannot add themselves.
-- Reversed duplicate requests are rejected.
-- Only the recipient can accept.
-- A third user cannot modify another pair's friendship.
-- Blocked rows cannot be modified by normal friendship actions.
-
-## 12. Test guest-to-account conversion
-
-Use a fresh private browser or a browser on another phone:
-
-1. Create or join a game as a guest.
-2. Complete the game.
-3. Select **Save Your Movie Profile**.
-4. Authenticate using Google or email.
-5. Confirm the previous game appears on `/profile`.
-6. Confirm the ratings and watchlist results remain available.
-
-Complete authentication in the same browser that played as the guest. The guest identity is stored in that browser's secure cookie.
-
-## 13. Verify mobile and multiplayer behavior
-
-On a physical phone, test:
-
-- Home screen layout and safe areas
-- Account creation and callback redirects
-- Friendship requests and profile links
-- Lobby Realtime updates
-- Reconnecting after Wi-Fi interruption
-- Swipe gestures with vertical scrolling locked
-- Offline answer queue and reconnection
-- Poster loading performance
-- Results appearing without a manual reload
-- Sharing and copying lobby links
-
-The HTTPS Vercel address also removes the insecure-network limitations that affected Web Crypto APIs during LAN testing.
-
-## 14. Inspect logs when something fails
+- [ ] TMDB credentials are server-only.
+- [ ] Dry-run and 25-movie sample syncs succeed against the intended target.
+- [ ] Production contains 3,000–5,000 eligible movies.
 
 ### Vercel
 
-```text
-Project → Logs
-Project → Deployments → Deployment → Runtime Logs
-```
+- [ ] The project is linked to the correct GitHub repository.
+- [ ] `main` is the Production Branch.
+- [ ] Production and Preview use different Supabase credentials.
+- [ ] Every required Production variable is configured.
+- [ ] `NEXT_PUBLIC_APP_URL` includes `https://` and matches the canonical host.
+- [ ] Custom-domain HTTPS is healthy, if used.
+- [ ] Supabase and Google callback settings match the canonical host.
 
-### Supabase
+### Product
 
-```text
-Logs → Auth Logs
-Logs → Postgres Logs
-Logs → API Logs
-```
+- [ ] Guest create and join work.
+- [ ] Two authenticated users can sign in independently.
+- [ ] Realtime lobby updates work.
+- [ ] A Quick game completes and results stay locked until everyone finishes.
+- [ ] Results, watchlists, and share PNGs render.
+- [ ] Installable PWA behavior works on Android and iPhone.
+- [ ] Production logs contain no unexpected errors after the smoke test.
 
-Common failures:
+## Official references
 
-- **Redirect goes to localhost:** incorrect Supabase Site URL.
-- **`redirect_uri_mismatch`:** incorrect Google callback URI.
-- **Friendship writes fail:** Phase 16 migration is missing.
-- **Personality updates fail:** Phase 15 migration is missing.
-- **Game creation fails:** a migration/RPC or the movie pool is missing.
-- **Email address unauthorized:** Supabase default-mailer restriction.
-- **Realtime does not update:** inspect the WebSocket connection and Supabase Realtime logs.
-- **Build reports missing variables:** add them in Vercel and redeploy.
-- **Deployment uses old values:** environment changes require a new deployment.
-
-## 15. Preview and production environments
-
-For the first development deployment, use:
-
-- `main` branch → Vercel production deployment
-- One live Supabase project → development/testing backend
-- Vercel's free `.vercel.app` domain
-- Google OAuth for account testing
-- Local movie ingestion
-- Manual SQL migrations through the Supabase dashboard
-
-Avoid connecting arbitrary Vercel preview branches to a real production database later. Preview deployments write data just like production deployments.
-
-When real users are approaching:
-
-1. Create a separate production Supabase project.
-2. Keep development data in the existing project.
-3. Apply the same migrations to production through an automated workflow.
-4. Give Preview and Production deployments separate credentials.
-5. Configure custom SMTP.
-6. Add a custom domain if desired.
-7. Configure backups, monitoring, rate limits, and spending alerts.
-
-Supabase supports Git-based migration deployment and isolated preview environments when the project is ready for a more formal workflow.
-
-## Final pre-deployment checklist
-
-- [ ] All code is committed and pushed.
-- [ ] `.env.local` is not tracked.
-- [ ] All required Supabase migrations are applied.
-- [ ] RLS is enabled on all public tables.
-- [ ] Friendship security migration is applied.
-- [ ] Personality definitions exist.
-- [ ] The movie pool contains at least 3,000 movies.
-- [ ] Vercel environment variables are configured.
-- [ ] Secrets do not have a `NEXT_PUBLIC_` prefix.
-- [ ] `NEXT_PUBLIC_APP_URL` matches the real Vercel domain.
-- [ ] Supabase Site URL matches the Vercel domain.
-- [ ] Supabase callback URLs are allow-listed.
-- [ ] Google uses the Supabase provider callback URI.
-- [ ] Google test users are configured if the OAuth app is unpublished.
-- [ ] Two independent accounts can authenticate.
-- [ ] Friend request, accept, decline, remove, and start-game flows work.
-- [ ] Guest history converts successfully after authentication.
-- [ ] Realtime lobby updates work across two devices.
-- [ ] Swipe gameplay and results work on a physical phone.
-- [ ] Vercel and Supabase logs show no unexpected errors.
+- [Vercel Git deployments](https://vercel.com/docs/git)
+- [Vercel environments](https://vercel.com/docs/deployments/environments)
+- [Vercel environment variables](https://vercel.com/docs/environment-variables)
+- [Vercel custom domains](https://vercel.com/docs/domains/working-with-domains)
+- [Supabase database migrations](https://supabase.com/docs/guides/deployment/database-migrations)
+- [Supabase production checklist](https://supabase.com/docs/guides/deployment/going-into-prod)
+- [Supabase Auth redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls)
+- [TMDB authentication](https://developer.themoviedb.org/v4/docs/authentication-application)

@@ -8,6 +8,12 @@ import "@fontsource/erica-one/latin.css";
 import "@fontsource/fascinate/latin.css";
 import "./globals.css";
 
+function applicationUrl() {
+  const value = process.env.NEXT_PUBLIC_APP_URL;
+  if (!value) throw new Error("NEXT_PUBLIC_APP_URL must be configured.");
+  return new URL(value);
+}
+
 export const metadata: Metadata = {
   applicationName: "vidi",
   appleWebApp: {
@@ -15,9 +21,7 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "vidi",
   },
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-  ),
+  metadataBase: applicationUrl(),
   title: {
     default: "vidi — seen it? prove it.",
     template: "%s | vidi",
