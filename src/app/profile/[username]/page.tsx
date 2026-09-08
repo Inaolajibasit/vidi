@@ -7,6 +7,7 @@ import {
   FriendshipAction,
 } from "@/features/friends/components/friend-actions";
 import { getFriendshipWith } from "@/features/friends/data";
+import { getProfileSeenMovieIds } from "@/features/profiles/seen-movies";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export default async function PublicProfilePage({
@@ -23,11 +24,12 @@ export default async function PublicProfilePage({
   const { data: profile } = await admin
     .from("profiles")
     .select(
-      "id, username, display_name, avatar_url, movies_seen_count, current_personality",
+      "id, username, display_name, avatar_url, current_personality",
     )
     .eq("username", parsed.data)
     .maybeSingle();
   if (!profile) notFound();
+  const movieIds = await getProfileSeenMovieIds(admin, profile.id);
   const friendship = await getFriendshipWith(profile.id);
   const { count } = await admin
     .from("game_players")
@@ -51,7 +53,7 @@ export default async function PublicProfilePage({
         <p className="text-muted mt-2">@{profile.username}</p>
         <div className="border-border mt-10 grid grid-cols-2 border-y py-7">
           <div>
-            <b className="text-accent text-4xl">{profile.movies_seen_count}</b>
+            <b className="text-accent text-4xl">{movieIds.length}</b>
             <p className="text-label text-muted mt-2">Movies seen</p>
           </div>
           <div>

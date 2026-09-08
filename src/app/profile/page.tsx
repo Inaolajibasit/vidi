@@ -5,6 +5,7 @@ import { getAccountAttention } from "@/components/layout/account-attention";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusAction, StatusScreen } from "@/components/ui/status-state";
 import { updateProfileAction } from "@/features/profiles/actions";
+import { getProfileSeenMovieIds } from "@/features/profiles/seen-movies";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -40,17 +41,7 @@ export default async function ProfilePage() {
     data.user.user_metadata.avatar_url ??
     data.user.user_metadata.picture ??
     null;
-  const playerIds = (players ?? []).map((player) => player.id);
-  const { data: ratings } = playerIds.length
-    ? await admin
-        .from("ratings")
-        .select("movie_id")
-        .in("game_player_id", playerIds)
-        .eq("seen", true)
-    : { data: [] };
-  const movieIds = [
-    ...new Set((ratings ?? []).map((rating) => rating.movie_id)),
-  ];
+  const movieIds = await getProfileSeenMovieIds(admin, data.user.id);
   const { data: mappings } = movieIds.length
     ? await admin
         .from("movie_genres")
@@ -105,7 +96,7 @@ export default async function ProfilePage() {
         </p>
         <div className="border-border mt-10 grid grid-cols-2 border-y py-7">
           <div>
-            <b className="text-accent text-4xl">{profile.movies_seen_count}</b>
+            <b className="text-accent text-4xl">{movieIds.length}</b>
             <p className="text-label text-muted mt-2">Movies seen</p>
           </div>
           <div>

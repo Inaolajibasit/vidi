@@ -4,6 +4,13 @@ Last updated: 2026-09-08 (Africa/Lagos)
 
 ## Email templates and OTP input update
 
+Also fixed the profile movies-seen display: both owner and public profile pages
+now count distinct seen movie IDs from account-linked ratings using a paginated
+query. The stored `movies_seen_count` field was updated only during guest-history
+claims, so it was stale after ordinary gameplay. No database change or backfill
+was made. Lint, typecheck, and all 91 tests passed, including new pagination,
+deduplication, empty-history, and query-error checks. This fix is not deployed.
+
 Added hosted Supabase email templates in `supabase/templates` for signup and
 magic-link sign-in, using the user's blue/yellow palette. The user reports the
 emails work but Supabase sends eight-digit codes. Updated the auth form's input
