@@ -107,10 +107,17 @@ password. Never place it in the repository or documentation.
 Link and verify the correct project:
 
 ```powershell
+npm.cmd exec --yes --package=supabase@2.116.0 --package=@supabase/cli-windows-x64@2.116.0 -- supabase login
 npx.cmd supabase login
-npx.cmd supabase link --project-ref YOUR_ORIGINAL_PROJECT_REF
+
+npm.cmd exec --yes --package=supabase@2.116.0 --package=@supabase/cli-windows-x64@2.116.0 -- supabase link --project-ref xgjhqpowxcomaorcuqgp
+npx.cmd supabase link --project-ref YOUR_ORIGINAL_PROJECT_REF https://xgjhqpowxcomaorcuqgp.supabase.co
+
+npm.cmd exec --yes --package=supabase@2.116.0 --package=@supabase/cli-windows-x64@2.116.0 -- supabase projects list
 npx.cmd supabase projects list
+
 npx.cmd supabase db dump --linked --dry-run
+npm.cmd exec --yes --package=supabase@2.116.0 --package=@supabase/cli-windows-x64@2.116.0 -- supabase db dump --linked --dry-run
 ```
 
 Confirm the linked indicator identifies the original vidi project. Then export
@@ -192,11 +199,21 @@ npx.cmd supabase db push
 npx.cmd supabase migration list
 ```
 
+
+Also verify Google sign-in and configure custom SMTP if you’ll use email authentication.
+
+  4. Finish technical verification. I can check movie readiness, run the production build and isolated gameplay tests, and review the remaining Git changes.
+  5. Deploy after review. Once those checks pass, I’ll show you the deployment command before running it. After deployment, we’ll verify sign-in and one
+     complete two-player game on your domain.
+
+  What is your custom domain, and is the vidi project already connected to Vercel?
+
 The two final security migrations are mandatory:
 
 ```text
 202609050001_security_hardening.sql
 202609050002_account_attention_reads.sql
+202609060001_browser_privilege_hardening.sql
 ```
 
 #### D. Review existing data
@@ -272,6 +289,16 @@ The initial chain applies once to a new project. Later pushes use migration
 history and apply only new files.
 
 ## 5. RLS and permissions
+
+The production review and proposed permission fix are recorded in
+[docs/PRODUCTION_READINESS_REVIEW.md](./docs/PRODUCTION_READINESS_REVIEW.md).
+The owner chose to preserve all existing accounts and games. Do not treat their
+presence as authorization for cleanup.
+
+`202609060001_browser_privilege_hardening.sql` narrows inherited browser grants
+on achievements, attention state, and internal sequences. Future postgres-owned
+public tables and sequences require explicit browser grants. Apply it only after
+reviewing the migration and deployment dry run.
 
 After migration, run these read-only checks in Supabase SQL Editor.
 

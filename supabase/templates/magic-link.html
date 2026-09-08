@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sign in — vidi</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#2227F7;color:#F1EFE7;font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%;">
+    <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">
+      Your sign-in link and code. Back to the movies.
+    </div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#2227F7">
+      <tr>
+        <td align="center" style="padding:40px 16px;">
+          <!--[if mso]><table role="presentation" width="560"><tr><td><![endif]-->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
+            <tr>
+              <td style="padding:0 8px 36px;color:#F1EFE7;font-size:42px;font-weight:900;letter-spacing:-2px;line-height:1;">vidi<span style="color:#FFD628;">.</span></td>
+            </tr>
+            <tr>
+              <td style="padding:0 8px 16px;color:#FFD628;font-size:11px;font-weight:700;letter-spacing:2px;line-height:1.5;">BACK FOR ANOTHER ROUND</td>
+            </tr>
+            <tr>
+              <td style="padding:0 8px 24px;">
+                <h1 style="margin:0;color:#F1EFE7;font-size:40px;font-weight:900;letter-spacing:-1.5px;line-height:1.08;">WELCOME<br />BACK.</h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 8px 28px;color:#F1EFE7;font-size:16px;line-height:1.65;">
+                Your next movie argument is waiting. Sign in to pick up where you left off.
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 8px 32px;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td bgcolor="#FFD628" style="border:1px solid #FFD628;mso-padding-alt:18px 24px;">
+                      <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:18px 24px;color:#090909;font-size:14px;font-weight:700;letter-spacing:1px;line-height:20px;text-decoration:none;">SIGN IN TO VIDI</a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 8px 10px;color:#F1EFE7;font-size:13px;line-height:1.6;">Or enter this code in the vidi sign-in screen:</td>
+            </tr>
+            <tr>
+              <td style="padding:0 8px 32px;color:#F1EFE7;font-family:Consolas,'Courier New',monospace;font-size:28px;font-weight:700;letter-spacing:5px;line-height:1.4;">{{ .Token }}</td>
+            </tr>
+            <tr>
+              <td style="padding:0 8px 32px;color:#F1EFE7;font-size:12px;line-height:1.7;">
+                This link and code are for you only. If you didn’t request this email, you can ignore it.
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 8px 0;border-top:1px solid #6970FF;color:#F1EFE7;font-size:12px;line-height:1.6;">seen it? prove it.</td>
+            </tr>
+          </table>
+          <!--[if mso]></td></tr></table><![endif]-->
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

@@ -8,7 +8,7 @@ import { trackAnalytics } from "@/lib/analytics/client";
 import { isNewAuthUser } from "@/features/auth/is-new-user";
 
 const emailSchema = z.email();
-const otpSchema = z.string().regex(/^\d{6}$/);
+const otpSchema = z.string().regex(/^(?:\d{6}|\d{8})$/);
 export function AuthForm({ next = "/profile" }: { next?: string }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -48,12 +48,13 @@ export function AuthForm({ next = "/profile" }: { next?: string }) {
     setBusy(false);
     if (error) return setMessage(error.message);
     setSent(true);
-    setMessage("Check your email for the link or 6-digit code.");
+    setMessage("Check your email for the sign-in link or code.");
   }
   async function verify(e: React.FormEvent) {
     e.preventDefault();
     const code = otpSchema.safeParse(otp.trim());
-    if (!code.success) return setMessage("Enter the 6-digit code.");
+    if (!code.success)
+      return setMessage("Enter the full 6- or 8-digit code from your email.");
     if (!client) return;
     setBusy(true);
     const { data, error } = await client.auth.verifyOtp({
@@ -104,7 +105,7 @@ export function AuthForm({ next = "/profile" }: { next?: string }) {
             autoComplete="one-time-code"
             className="border-border bg-background/80 focus:border-accent min-h-14 rounded-sm border px-4 text-center text-xl tracking-[.35em] outline-none"
             inputMode="numeric"
-            maxLength={6}
+            maxLength={8}
             id="otp"
             value={otp}
             onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}

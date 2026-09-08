@@ -9,6 +9,18 @@ Run deterministic unit and domain-integration tests:
 npm test
 ```
 
+The SQL permission regression is separate from `npm test`. On an isolated
+database with the full migration chain applied and an administrative test
+connection configured through PostgreSQL environment variables, run:
+
+```powershell
+psql --set ON_ERROR_STOP=1 --file tests/sql/browser-privileges.sql
+```
+
+Never target production. The test creates synthetic fixtures and rolls back
+table changes; identity sequences may advance. It checks browser denial paths,
+owner-only attention state, server writes, and defaults for future tables.
+
 Run the browser suite against an isolated test deployment:
 
 ```bash
