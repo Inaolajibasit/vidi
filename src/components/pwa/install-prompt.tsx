@@ -3,6 +3,8 @@
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { useActionFeedback } from "@/components/ui/action-feedback";
 
 const INSTALL_PROMPT_KEY = "vidi:install-prompt:v1";
 
@@ -34,6 +36,9 @@ export function InstallPrompt() {
   );
   const [platform, setPlatform] = useState<"android" | "ios" | null>(null);
   const [visible, setVisible] = useState(false);
+  const [installing, setInstalling] = useState(false);
+  const installLock = useRef(false);
+  const notify = useActionFeedback();
   const dialogRef = useRef<HTMLElement>(null);
   const dismissButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -125,12 +130,30 @@ export function InstallPrompt() {
   }
 
   async function install() {
-    if (!installEvent) return;
-    await installEvent.prompt();
-    const choice = await installEvent.userChoice;
-    remember(choice.outcome === "accepted" ? "installed" : "dismissed");
-    setInstallEvent(null);
-    setVisible(false);
+    if (!installEvent || installLock.current) return;
+    installLock.current = true;
+    setInstalling(true);
+    try {
+      await installEvent.prompt();
+      const choice = await installEvent.userChoice;
+      remember(choice.outcome === "accepted" ? "installed" : "dismissed");
+      setInstallEvent(null);
+      setVisible(false);
+      if (choice.outcome === "accepted")
+        notify({
+          success: true,
+          message:
+            "Installation accepted. Your device will finish adding vidi.",
+        });
+    } catch {
+      notify({
+        success: false,
+        message: "Couldn't open installation. Please try again.",
+      });
+    } finally {
+      installLock.current = false;
+      setInstalling(false);
+    }
   }
 
   if (!visible || !platform) return null;
@@ -189,13 +212,15 @@ export function InstallPrompt() {
             Not now
           </button>
           {platform === "android" ? (
-            <button
+            <Button
               className="bg-accent text-background min-h-12 rounded-md px-3 text-xs font-extrabold uppercase transition-transform active:scale-[0.98]"
               onClick={() => void install()}
+              loading={installing}
+              loadingLabel="Opening install…"
               type="button"
             >
               Install
-            </button>
+            </Button>
           ) : (
             <button
               className="bg-accent text-background min-h-12 rounded-md px-3 text-xs font-extrabold uppercase transition-transform active:scale-[0.98]"

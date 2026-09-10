@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/button";
+import { NavigationForm } from "@/components/ui/navigation-form";
+import { ActionForm } from "@/components/ui/action-form";
 import Link from "next/link";
 
 import { AccountMenu } from "@/components/layout/account-menu";
@@ -55,29 +58,39 @@ function SavedMovie({ item }: { item: SavedItem }) {
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {!item.watchedAt ? (
-          <form action={markWatchlistItemWatchedAction}>
+          <ActionForm
+            successMessage="Marked as watched."
+            action={markWatchlistItemWatchedAction}
+          >
             <input name="itemId" type="hidden" value={item.id} />
-            <button
+            <Button
               aria-label={`Mark ${item.movie.title} as watched`}
               className="border-foreground/25 text-muted hover:border-accent hover:bg-accent hover:text-background focus-visible:outline-accent grid size-11 place-items-center rounded-sm border transition-[color,background-color,border-color,transform] focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95"
               title="Mark watched"
+              loadingLabel="Saving…"
+              variant="outline"
               type="submit"
             >
               <Icon name="check" size={18} />
-            </button>
-          </form>
+            </Button>
+          </ActionForm>
         ) : null}
-        <form action={removeWatchlistItemAction}>
+        <ActionForm
+          successMessage="Removed from your watchlist."
+          action={removeWatchlistItemAction}
+        >
           <input name="itemId" type="hidden" value={item.id} />
-          <button
+          <Button
             aria-label={`Remove ${item.movie.title} from watchlist`}
             className="border-foreground/25 text-muted hover:border-purple hover:bg-purple hover:text-foreground focus-visible:outline-purple grid size-11 place-items-center rounded-sm border transition-[color,background-color,border-color,transform] focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95"
             title="Remove"
+            loadingLabel="Removing…"
+            variant="outline"
             type="submit"
           >
             <Icon name="trash" size={17} />
-          </button>
-        </form>
+          </Button>
+        </ActionForm>
       </div>
     </article>
   );
@@ -148,6 +161,11 @@ export default async function WatchlistPage({
   }
 
   const personal = (lists ?? []).find((list) => list.kind === "personal");
+  const personalMovieIds = new Set(
+    (rawItems ?? [])
+      .filter((item) => item.watchlist_id === personal?.id)
+      .map((item) => item.movie_id),
+  );
   const shared = (lists ?? []).filter((list) => list.kind === "shared");
   const { data: searchResults } =
     user && activeTab === "my" && query.length >= 2
@@ -267,7 +285,7 @@ export default async function WatchlistPage({
 
             <section className="border-foreground/20 mt-12 border-t pt-10">
               <p className="text-label text-purple">Add a movie</p>
-              <form className="mt-4 flex gap-2" role="search">
+              <NavigationForm className="mt-4 flex gap-2" role="search">
                 <input name="tab" type="hidden" value="my" />
                 <label className="sr-only" htmlFor="movie-search">
                   Search movies
@@ -279,31 +297,37 @@ export default async function WatchlistPage({
                   name="q"
                   placeholder="Search a movie"
                 />
-                <button
+                <Button
                   className="bg-accent text-background min-h-12 rounded-sm px-5 text-xs font-extrabold uppercase"
+                  loadingLabel="Searching…"
                   type="submit"
                 >
                   Search
-                </button>
-              </form>
+                </Button>
+              </NavigationForm>
               <div className="mt-6 grid gap-1">
                 {(searchResults ?? []).map((movie) => (
-                  <form
+                  <ActionForm
+                    successMessage="Added to your watchlist."
                     action={manuallyAddWatchlistItemAction}
                     className="border-foreground/15 flex min-h-14 items-center justify-between border-b"
-                    key={movie.id}
+                    key={`${movie.id}:${personalMovieIds.has(movie.id)}`}
                   >
                     <input name="movieId" type="hidden" value={movie.id} />
                     <span className="min-w-0 truncate pr-4 text-sm font-bold">
                       {movie.title}
                     </span>
-                    <button
+                    <Button
+                      variant="ghost"
+                      loadingLabel="Adding…"
+                      completedLabel="Added"
+                      disabled={personalMovieIds.has(movie.id)}
                       className="text-accent min-h-11 shrink-0 text-xs font-extrabold uppercase"
                       type="submit"
                     >
-                      + Add
-                    </button>
-                  </form>
+                      {personalMovieIds.has(movie.id) ? "Added" : "+ Add"}
+                    </Button>
+                  </ActionForm>
                 ))}
                 {query.length >= 2 && !searchResults?.length ? (
                   <p className="text-muted py-8 text-sm">

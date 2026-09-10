@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { NavigationForm } from "@/components/ui/navigation-form";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { inviteCodeSchema } from "@/features/games/validation";
@@ -41,7 +42,7 @@ export default async function JoinPage({ searchParams }: JoinPageProps) {
             <span className="text-accent block">vidi.</span>
           </h1>
 
-          <form className="mt-10 grid gap-5" method="get">
+          <NavigationForm className="mt-10 grid gap-5">
             <Input
               autoCapitalize="characters"
               autoComplete="off"
@@ -58,10 +59,15 @@ export default async function JoinPage({ searchParams }: JoinPageProps) {
               placeholder="V7K4Q2"
               required
             />
-            <Button fullWidth size="lg" type="submit">
+            <Button
+              fullWidth
+              size="lg"
+              type="submit"
+              loadingLabel="Finding game…"
+            >
               Find game
             </Button>
-          </form>
+          </NavigationForm>
         </section>
       </div>
     </main>

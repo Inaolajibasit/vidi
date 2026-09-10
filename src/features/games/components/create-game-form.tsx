@@ -26,7 +26,13 @@ function SubmitButton() {
   const { pending } = useFormStatus();
 
   return (
-    <Button disabled={pending} fullWidth size="lg" type="submit">
+    <Button
+      loadingLabel="Building deck…"
+      disabled={pending}
+      fullWidth
+      size="lg"
+      type="submit"
+    >
       {pending ? "Building deck…" : "Create game"}
     </Button>
   );

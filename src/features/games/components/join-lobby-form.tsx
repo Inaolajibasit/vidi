@@ -10,7 +10,13 @@ import { joinGameAction } from "@/features/games/lobby-actions";
 function JoinButton() {
   const { pending } = useFormStatus();
   return (
-    <Button disabled={pending} fullWidth size="lg" type="submit">
+    <Button
+      loadingLabel="Joining game…"
+      disabled={pending}
+      fullWidth
+      size="lg"
+      type="submit"
+    >
       {pending ? "Joining…" : "Join game"}
     </Button>
   );

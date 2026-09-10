@@ -1,74 +1,64 @@
 "use client";
 
-import { useState } from "react";
-
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { trackAnalytics } from "@/lib/analytics/client";
+import { useFeedbackAction } from "@/lib/hooks/use-feedback-action";
 
 export function InviteActions({ inviteCode }: { inviteCode: string }) {
-  const [copyLabel, setCopyLabel] = useState("Copy link");
-  const [shareLabel, setShareLabel] = useState("Share");
-
-  async function copyInvite() {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      trackAnalytics(
-        "invite_shared",
-        { method: "clipboard" },
-        inviteCode,
-      );
-      setCopyLabel("Copied");
-    } catch {
-      setCopyLabel("Copy failed");
-    }
-    window.setTimeout(() => setCopyLabel("Copy link"), 2_000);
+  const { pending, run } = useFeedbackAction();
+  async function copy() {
+    await navigator.clipboard.writeText(window.location.href);
+    trackAnalytics("invite_shared", { method: "clipboard" }, inviteCode);
+    return "Invite link copied.";
   }
-
-  async function shareInvite() {
-    const url = window.location.href;
-
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          text: `Join my vidi game. Code: ${inviteCode}`,
-          title: "Join my vidi game",
-          url,
-        });
-        trackAnalytics(
-          "invite_shared",
-          { method: "web_share" },
-          inviteCode,
-        );
-        return;
-      }
-
-      await copyInvite();
-      setShareLabel("Link copied");
-      window.setTimeout(() => setShareLabel("Share"), 2_000);
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return;
-      setShareLabel("Couldn’t share");
-      window.setTimeout(() => setShareLabel("Share"), 2_000);
-    }
-  }
-
   return (
     <div className="grid grid-cols-2 gap-3">
       <Button
         leadingIcon={<Icon name="copy" size={18} />}
-        onClick={copyInvite}
+        loading={pending === "copy"}
+        disabled={Boolean(pending)}
+        loadingLabel="Copying…"
+        onClick={() =>
+          run(
+            "copy",
+            copy,
+            "Couldn't copy the link. Try again or copy the address from your browser.",
+          )
+        }
         size="lg"
         variant="outline"
       >
-        {copyLabel}
+        Copy link
       </Button>
       <Button
         leadingIcon={<Icon name="share" size={18} />}
-        onClick={shareInvite}
+        loading={pending === "share"}
+        disabled={Boolean(pending)}
+        loadingLabel="Opening share…"
+        onClick={() =>
+          run(
+            "share",
+            async () => {
+              if (!navigator.share) return copy();
+              await navigator.share({
+                text: `Join my vidi game. Code: ${inviteCode}`,
+                title: "Join my vidi game",
+                url: window.location.href,
+              });
+              trackAnalytics(
+                "invite_shared",
+                { method: "web_share" },
+                inviteCode,
+              );
+              return "Invite shared.";
+            },
+            "Couldn't share the invite. Please try again.",
+          )
+        }
         size="lg"
       >
-        {shareLabel}
+        Share
       </Button>
     </div>
   );
