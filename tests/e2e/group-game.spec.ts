@@ -71,7 +71,10 @@ test.describe("group Quick games", () => {
         await host.page
           .getByRole("button", { name: "Create game", exact: true })
           .click();
-        await expect(host.page).toHaveURL(INVITE_CODE_PATTERN);
+        // Match the other hosted multiplayer transitions' network allowance.
+        await expect(host.page).toHaveURL(INVITE_CODE_PATTERN, {
+          timeout: 30_000,
+        });
 
         const inviteCode = host.page.url().split("/").at(-1)!;
         await Promise.all(

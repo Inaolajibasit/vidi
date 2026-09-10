@@ -1,9 +1,19 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+"use client";
+
+import {
+  createContext,
+  useContext,
+  type ButtonHTMLAttributes,
+  type ReactNode,
+} from "react";
+import { useFormStatus } from "react-dom";
 
 import { cn } from "@/lib/utils";
 
 type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "purple";
 type ButtonSize = "sm" | "md" | "lg";
+export const ButtonPendingContext = createContext(false);
+export const ButtonCompletedContext = createContext(false);
 
 const variants: Record<ButtonVariant, string> = {
   primary: "bg-accent text-background hover:bg-accent-strong",
@@ -22,6 +32,9 @@ const sizes: Record<ButtonSize, string> = {
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   fullWidth?: boolean;
+  loading?: boolean;
+  loadingLabel?: string;
+  completedLabel?: string;
   leadingIcon?: ReactNode;
   size?: ButtonSize;
   trailingIcon?: ReactNode;
@@ -33,6 +46,9 @@ export function Button({
   className,
   disabled,
   fullWidth,
+  loading = false,
+  loadingLabel = "Working…",
+  completedLabel = "Done",
   leadingIcon,
   size = "md",
   trailingIcon,
@@ -40,6 +56,10 @@ export function Button({
   variant = "primary",
   ...props
 }: ButtonProps) {
+  const { pending } = useFormStatus();
+  const navigating = useContext(ButtonPendingContext);
+  const completed = useContext(ButtonCompletedContext) && type === "submit";
+  const busy = loading || (type === "submit" && (pending || navigating));
   return (
     <button
       className={cn(
@@ -49,13 +69,29 @@ export function Button({
         fullWidth && "w-full",
         className,
       )}
-      disabled={disabled}
+      disabled={disabled || busy || completed}
       type={type}
       {...props}
+      aria-busy={busy || undefined}
+      aria-label={
+        busy && props["aria-label"] ? loadingLabel : props["aria-label"]
+      }
     >
-      {leadingIcon}
-      <span>{children}</span>
-      {trailingIcon}
+      {busy ? (
+        <span
+          aria-hidden="true"
+          className="size-4 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent motion-reduce:animate-none"
+        />
+      ) : (
+        leadingIcon
+      )}
+      <span
+        aria-live="polite"
+        className={busy && props["aria-label"] ? "sr-only" : undefined}
+      >
+        {busy ? loadingLabel : completed ? completedLabel : children}
+      </span>
+      {!busy && trailingIcon}
     </button>
   );
 }

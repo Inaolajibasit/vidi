@@ -1,6 +1,73 @@
 # vidi session handoff
 
-Last updated: 2026-09-08 (Africa/Lagos)
+Last updated: 2026-09-10 (Africa/Lagos)
+
+## Action feedback — current task
+
+The user reports vidi is live and working at `vidi.lol`, Vercel project `vidi`.
+They requested clearer loading/completed/error feedback, especially profile
+editing, and explicitly asked to work on the test branch. Created local `test`
+(no matching local/remote branch existed) and preserved earlier uncommitted
+changes. No commit, push, deployment, or production data change has occurred.
+
+Implemented shared pending buttons, mutation notifications, profile validation
+and saved/failed states, duplicate submission prevention, safer copy/share
+feedback, Auth pending/error recovery, watchlist completion states, and loading
+for search/lookup/retry/install/sign-out. See
+[ACTION_FEEDBACK_REVIEW.md](./ACTION_FEEDBACK_REVIEW.md) for coverage and checks.
+Lint, TypeScript, optimized build, and all 94 unit tests passed. Auth feedback
+and 320px profile/watchlist E2E passed. The final two-player/clipboard regression
+also passed, including results and share PNG generation. The test uses a
+controlled clipboard promise for reliable loading assertions and a 30-second
+host-start deadline matching the group tests. All requested implementation is
+ready for review locally on `test`; no push or deployment was performed.
+
+Important test setup: `.env.local` was verified to use only `vidi-e2e`.
+`.env.e2e.local` has duplicate URL definitions, including production; the test
+guard stopped before writes. Do not use that mixed file. No env files were
+changed. Production and any deployment still require reviewed commands first.
+This section supersedes the historical next-task notes below.
+
+## Vercel and custom domain — current next task
+
+The user now reports completing all section 9/10 setup instructions. Treat this
+as user-confirmed configuration, not independent dashboard verification. The
+final domain and production Vercel project name have been requested. Local
+`.vercel/project.json` still links to `vidi-e2e`; do not deploy through that link
+as if it were production. Fresh lint, 91 unit tests, and the production build
+passed on the isolated E2E environment. The security probe also passed.
+The browser tests exposed a missed-start lobby issue in five-player games:
+added refresh on subscription plus a visible waiting-lobby refresh every 20
+seconds and on returning to the tab. The five-player regression passed after
+the fix; 2/3/4-player cases passed earlier in the review. Deck-creation test
+assertions now allow 30 seconds, matching other hosted transitions. Lint,
+91 unit tests, and the optimized build with TypeScript passed after the fix.
+See [RELEASE_GATE_REVIEW.md](./RELEASE_GATE_REVIEW.md) for precise scope.
+
+The user declined director enrichment. Do not run the backfill or ask again for
+its approval. Created [VERCEL_AND_CUSTOM_DOMAIN_SETUP.md](./VERCEL_AND_CUSTOM_DOMAIN_SETUP.md)
+with detailed Deployment sections 9 and 10 instructions, environment isolation,
+DNS/email record preservation, and Auth URL checks. The actual custom domain and
+production Vercel project identity remain unconfirmed by the agent. Next: obtain
+those identifiers, verify the release target, review the working tree and release
+commit, then prepare the deployment action for user approval. Do not repeat the
+completed setup instructions or run director enrichment.
+No dashboard changes, database writes, or deployments were made for the guide.
+
+## Movie readiness — historical review
+
+The user confirms email delivery and Google sign-in work. Read-only production
+movie checks found 3,999 eligible movies but all lack director metadata.
+All 25 sampled TMDB bundles and poster downloads passed. Prepared a narrowly
+scoped director backfill; its production dry run found 25 available directors
+and updated zero rows. The project mismatch guard also passed. Lint, typecheck,
+and all 91 tests passed. See [MOVIE_READINESS_REVIEW.md](./MOVIE_READINESS_REVIEW.md).
+
+The proposed director backfill was subsequently declined by the user.
+No movie writes or deployment occurred. Preserve all data. Local credentials
+point to a different project; use the guarded wrapper without modifying local
+environment files. Then continue Vercel isolation, domain, and release gates.
+This supersedes older next-task notes below.
 
 ## Email templates and OTP input update
 

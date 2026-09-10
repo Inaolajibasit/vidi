@@ -66,6 +66,7 @@ type ShareStatus = "downloaded" | "error" | "idle" | "loading" | "shared";
 
 export function ShareResultCard({ inviteCode }: { inviteCode: string }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const sharingRef = useRef(false);
   const [format, setFormat] = useState<ShareCardFormat>(
     DEFAULT_SHARE_CARD_FORMAT,
   );
@@ -88,10 +89,13 @@ export function ShareResultCard({ inviteCode }: { inviteCode: string }) {
   }
 
   function closeDialog() {
+    if (sharingRef.current) return;
     dialogRef.current?.close();
   }
 
   async function shareResult() {
+    if (sharingRef.current) return;
+    sharingRef.current = true;
     setStatus("loading");
     try {
       const response = await fetch(
@@ -132,11 +136,13 @@ export function ShareResultCard({ inviteCode }: { inviteCode: string }) {
         return;
       }
       setStatus("error");
+    } finally {
+      sharingRef.current = false;
     }
   }
 
   const buttonLabel: Record<ShareStatus, string> = {
-    downloaded: "Image downloaded",
+    downloaded: "Download started",
     error: "Try sharing again",
     idle: "Share this result",
     loading: "Making your card…",
@@ -158,7 +164,10 @@ export function ShareResultCard({ inviteCode }: { inviteCode: string }) {
       <dialog
         aria-labelledby="share-dialog-title"
         className="border-border bg-surface text-foreground fixed inset-x-0 bottom-0 m-0 max-h-[92dvh] w-full max-w-none overflow-y-auto rounded-t-xl border p-0 backdrop:bg-black/85 backdrop:backdrop-blur-sm sm:inset-0 sm:m-auto sm:max-w-md sm:rounded-xl"
-        onCancel={() => setIsOpen(false)}
+        onCancel={(event) => {
+          if (sharingRef.current) event.preventDefault();
+          else setIsOpen(false);
+        }}
         onClick={(event) => {
           if (event.target === event.currentTarget) closeDialog();
         }}
@@ -189,6 +198,7 @@ export function ShareResultCard({ inviteCode }: { inviteCode: string }) {
             </div>
             <button
               aria-label="Close share options"
+              disabled={status === "loading"}
               className="border-border bg-background/80 relative grid size-11 shrink-0 place-items-center rounded-full border transition active:scale-95"
               onClick={closeDialog}
               type="button"
@@ -209,6 +219,7 @@ export function ShareResultCard({ inviteCode }: { inviteCode: string }) {
             ).map(([value, option]) => (
               <button
                 aria-pressed={format === value}
+                disabled={status === "loading"}
                 className={cn(
                   "group flex min-h-36 flex-col items-center justify-end gap-3 rounded-md border p-3 transition duration-150 active:scale-[0.97]",
                   format === value
@@ -245,6 +256,8 @@ export function ShareResultCard({ inviteCode }: { inviteCode: string }) {
           <Button
             className="relative mt-4"
             disabled={status === "loading"}
+            loading={status === "loading"}
+            loadingLabel="Making your card…"
             fullWidth
             leadingIcon={<ShareIcon />}
             onClick={shareResult}
@@ -258,7 +271,11 @@ export function ShareResultCard({ inviteCode }: { inviteCode: string }) {
           >
             {status === "error"
               ? "The card could not be generated. Check your connection and try again."
-              : "We’ll open your device share menu. If unavailable, the PNG downloads instead."}
+              : status === "shared"
+                ? "Your result was shared."
+                : status === "downloaded"
+                  ? "Download started. Look in your device's downloads for the PNG."
+                  : "We’ll open your device share menu. If unavailable, the PNG downloads instead."}
           </p>
         </div>
       </dialog>

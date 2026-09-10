@@ -64,7 +64,13 @@ function WaitingAnimation() {
 function StartButton({ canStart }: { canStart: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <Button disabled={!canStart || pending} fullWidth size="lg" type="submit">
+    <Button
+      disabled={!canStart || pending}
+      loadingLabel="Starting game…"
+      fullWidth
+      size="lg"
+      type="submit"
+    >
       {pending ? "Starting…" : "Start game"}
     </Button>
   );
@@ -119,6 +125,8 @@ export function LobbyExperience({ lobby }: { lobby: LobbyData }) {
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
           setConnectionState("Live");
+          // The game may have changed before this subscription was ready.
+          refreshLobby();
           if (lobby.isParticipant) {
             await channel.track({ online_at: new Date().toISOString() });
           }
@@ -133,6 +141,22 @@ export function LobbyExperience({ lobby }: { lobby: LobbyData }) {
       void supabase.removeChannel(channel);
     };
   }, [lobby.inviteCode, lobby.isParticipant, presenceKey, router]);
+
+  useEffect(() => {
+    if (!lobby.isParticipant || lobby.status !== "waiting") return;
+
+    // Broadcasts are best-effort. Recover missed starts without requiring a
+    // manual reload, including when a background tab becomes visible again.
+    const refreshWaitingLobby = () => {
+      if (document.visibilityState === "visible") router.refresh();
+    };
+    const timer = window.setInterval(refreshWaitingLobby, 20_000);
+    document.addEventListener("visibilitychange", refreshWaitingLobby);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshWaitingLobby);
+    };
+  }, [lobby.inviteCode, lobby.isParticipant, lobby.status, router]);
 
   if (!lobby.isParticipant) {
     const unavailable = lobby.status !== "waiting" || isFull;
@@ -357,12 +381,14 @@ export function LobbyExperience({ lobby }: { lobby: LobbyData }) {
               suppressHydrationWarning
             >
               <input name="inviteCode" type="hidden" value={lobby.inviteCode} />
-              <button
+              <Button
+                variant="ghost"
+                loadingLabel="Leaving lobby…"
                 className="tap-target text-muted hover:text-foreground cursor-pointer text-xs underline underline-offset-4"
                 type="submit"
               >
                 Leave lobby
-              </button>
+              </Button>
             </form>
           ) : null}
         </div>

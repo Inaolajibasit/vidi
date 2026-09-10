@@ -2,7 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect } from "react";
 
 import { Avatar } from "@/components/ui/avatar";
 import { Icon } from "@/components/ui/icon";
@@ -13,11 +13,22 @@ import {
 } from "@/features/challenges/actions";
 import type { ChallengeData } from "@/features/challenges/data";
 
-const modeNames = { no_life: "No Life", proper: "Proper", quick: "Quick" } as const;
+import { Button } from "@/components/ui/button";
+import { useFeedbackAction } from "@/lib/hooks/use-feedback-action";
 
-export function ChallengeExperience({ challenge }: { challenge: ChallengeData }) {
+const modeNames = {
+  no_life: "No Life",
+  proper: "Proper",
+  quick: "Quick",
+} as const;
+
+export function ChallengeExperience({
+  challenge,
+}: {
+  challenge: ChallengeData;
+}) {
   const [state, action, pending] = useActionState(startChallengeAction, {});
-  const [shareLabel, setShareLabel] = useState("Copy challenge link");
+  const { pending: sharing, run } = useFeedbackAction();
   const reduceMotion = useReducedMotion();
 
   useEffect(() => {
@@ -27,24 +38,23 @@ export function ChallengeExperience({ challenge }: { challenge: ChallengeData })
     void trackChallengeOpenedAction(challenge.code);
   }, [challenge.code]);
 
-  async function shareChallenge() {
-    const url = window.location.href;
-    const content = {
-      text: `${challenge.creator.displayName} challenged you. Think you know movies better?`,
-      title: "A vidi movie challenge",
-      url,
-    };
-    try {
-      if (navigator.share) {
-        await navigator.share(content);
-        setShareLabel("Shared");
-      } else {
-        await navigator.clipboard.writeText(url);
-        setShareLabel("Link copied");
-      }
-    } catch {
-      setShareLabel("Copy challenge link");
-    }
+  function shareChallenge() {
+    return run(
+      "share",
+      async () => {
+        if (navigator.share) {
+          await navigator.share({
+            text: `${challenge.creator.displayName} challenged you. Think you know movies better?`,
+            title: "A vidi movie challenge",
+            url: window.location.href,
+          });
+          return "Challenge shared.";
+        }
+        await navigator.clipboard.writeText(window.location.href);
+        return "Challenge link copied.";
+      },
+      "Couldn't share the challenge. Please try again.",
+    );
   }
 
   return (
@@ -93,7 +103,9 @@ export function ChallengeExperience({ challenge }: { challenge: ChallengeData })
           </h1>
           <div className="border-foreground/20 mt-8 flex items-center justify-between border-y py-4 text-sm">
             <span>{modeNames[challenge.mode]}</span>
-            <span className="text-muted">{challenge.movieCount} movies · same deck</span>
+            <span className="text-muted">
+              {challenge.movieCount} movies · same deck
+            </span>
           </div>
 
           <form action={action} className="mt-8 grid gap-3">
@@ -115,22 +127,26 @@ export function ChallengeExperience({ challenge }: { challenge: ChallengeData })
                 {state.message}
               </p>
             ) : null}
-            <button
+            <Button
               className="bg-accent text-background mt-2 min-h-14 rounded-sm text-sm font-extrabold uppercase shadow-[5px_5px_0_#2227F7] transition-transform active:scale-[0.97] disabled:opacity-50"
               disabled={pending}
+              loadingLabel="Building your deck…"
               type="submit"
             >
               {pending ? "Building your deck…" : "Start challenge"}
-            </button>
+            </Button>
           </form>
-          <button
+          <Button
             className="border-foreground/30 mt-3 flex min-h-12 items-center justify-center gap-2 rounded-sm border text-xs font-bold uppercase"
+            loading={Boolean(sharing)}
+            loadingLabel="Opening share…"
             onClick={shareChallenge}
+            variant="outline"
             type="button"
           >
             <Icon name="copy" size={16} />
-            {shareLabel}
-          </button>
+            Share challenge
+          </Button>
         </motion.section>
       </div>
     </main>

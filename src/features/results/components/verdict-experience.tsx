@@ -1,4 +1,5 @@
 "use client";
+import { ActionForm } from "@/components/ui/action-form";
 
 import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
@@ -248,7 +249,11 @@ export function VerdictExperience({
               </p>
               <PosterStrip movies={verdict.myWatchlist} />
               {verdict.isAuthenticated && verdict.myWatchlist.length ? (
-                <form action={savePersonalGameWatchlistAction} className="mt-7">
+                <ActionForm
+                  successMessage="Saved to your watchlist."
+                  action={savePersonalGameWatchlistAction}
+                  className="mt-7"
+                >
                   <input
                     name="inviteCode"
                     type="hidden"
@@ -256,6 +261,8 @@ export function VerdictExperience({
                   />
                   <Button
                     disabled={verdict.myWatchlistSaved}
+                    loadingLabel="Saving watchlist…"
+                    completedLabel="Saved to my watchlist"
                     fullWidth
                     type="submit"
                   >
@@ -263,7 +270,7 @@ export function VerdictExperience({
                       ? "Saved to my watchlist"
                       : "Add to watchlist"}
                   </Button>
-                </form>
+                </ActionForm>
               ) : null}
               {!verdict.isAuthenticated ? (
                 <p className="border-purple/40 text-muted mt-7 border-l-2 pl-4 text-sm leading-relaxed">
@@ -284,7 +291,11 @@ export function VerdictExperience({
               </p>
               <PosterStrip movies={verdict.ourWatchlist} />
               {verdict.isAuthenticated && verdict.ourWatchlist.length ? (
-                <form action={saveSharedGameWatchlistAction} className="mt-7">
+                <ActionForm
+                  successMessage="Group watchlist saved."
+                  action={saveSharedGameWatchlistAction}
+                  className="mt-7"
+                >
                   <input
                     name="inviteCode"
                     type="hidden"
@@ -292,6 +303,8 @@ export function VerdictExperience({
                   />
                   <Button
                     disabled={verdict.ourWatchlistSaved}
+                    loadingLabel="Saving group watchlist…"
+                    completedLabel="Group watchlist saved"
                     fullWidth
                     type="submit"
                     variant="purple"
@@ -300,7 +313,7 @@ export function VerdictExperience({
                       ? "Our watchlist saved"
                       : "Save our watchlist"}
                   </Button>
-                </form>
+                </ActionForm>
               ) : null}
             </div>
           </Reveal>
@@ -335,12 +348,12 @@ export function VerdictExperience({
                   type="hidden"
                   value={verdict.inviteCode}
                 />
-                <button
+                <Button
                   className="bg-accent text-background min-h-14 w-full rounded-md text-sm font-extrabold uppercase"
                   type="submit"
                 >
                   Challenge someone
-                </button>
+                </Button>
               </form>
             ) : challengesEnabled ? (
               <Link

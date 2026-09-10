@@ -4,7 +4,7 @@ import { AccountMenu } from "@/components/layout/account-menu";
 import { getAccountAttention } from "@/components/layout/account-attention";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusAction, StatusScreen } from "@/components/ui/status-state";
-import { updateProfileAction } from "@/features/profiles/actions";
+import { ProfileForm } from "@/features/profiles/components/profile-form";
 import { getProfileSeenMovieIds } from "@/features/profiles/seen-movies";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -130,36 +130,11 @@ export default async function ProfilePage() {
         <h2 className="font-display text-3xl font-bold uppercase">
           Edit profile
         </h2>
-        <form action={updateProfileAction} className="mt-6 grid gap-3">
-          <input
-            aria-label="Display name"
-            className="border-border bg-surface min-h-12 rounded-md border px-4"
-            name="displayName"
-            defaultValue={profile.display_name}
-            maxLength={50}
-            required
-          />
-          <input
-            aria-label="Username"
-            className="border-border bg-surface min-h-12 rounded-md border px-4"
-            name="username"
-            defaultValue={profile.username ?? ""}
-            pattern="[a-zA-Z0-9_]{3,24}"
-            placeholder="username"
-            required
-          />
-          <input
-            aria-label="Avatar URL"
-            className="border-border bg-surface min-h-12 rounded-md border px-4"
-            defaultValue={profile.avatar_url ?? ""}
-            name="avatarUrl"
-            placeholder="https://…"
-            type="url"
-          />
-          <button className="bg-accent text-background min-h-12 rounded-md font-bold uppercase">
-            Save profile
-          </button>
-        </form>
+        <ProfileForm
+          displayName={profile.display_name}
+          username={profile.username}
+          avatarUrl={profile.avatar_url}
+        />
       </section>
       <section className="border-border border-t py-10">
         <h2 className="font-display text-3xl font-bold uppercase">

@@ -1,7 +1,8 @@
 "use client";
+import { Button } from "@/components/ui/button";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
 import { Avatar } from "@/components/ui/avatar";
 import { Icon, type IconName } from "@/components/ui/icon";
@@ -30,6 +31,7 @@ export function AccountMenu({
   displayName = "Guest",
 }: AccountMenuProps) {
   const [open, setOpen] = useState(false);
+  const [signOutState, signOut] = useActionState(signOutAction, {});
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const hasAttention = friendRequests > 0 || incompleteGames > 0;
@@ -132,16 +134,23 @@ export function AccountMenu({
                 })}
               </nav>
               <form
-                action={signOutAction}
+                action={signOut}
                 className="border-foreground/15 border-t pt-1"
               >
-                <button
+                <Button
                   className="text-muted hover:bg-purple hover:text-foreground focus-visible:bg-purple focus-visible:text-foreground flex min-h-11 w-full items-center gap-3 rounded-[2px] px-3 text-sm font-bold transition-colors outline-none"
                   type="submit"
+                  loadingLabel="Signing out…"
+                  variant="ghost"
                 >
                   <Icon name="logout" size={17} />
                   Log out
-                </button>
+                </Button>
+                {signOutState.message && (
+                  <p role="alert" className="text-danger px-3 py-2 text-xs">
+                    {signOutState.message}
+                  </p>
+                )}
               </form>
             </>
           ) : (

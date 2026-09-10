@@ -1,23 +1,13 @@
 "use client";
+import { RetryButton } from "@/components/ui/retry-button";
 
-import {
-  StatusState,
-  statusActionClassName,
-} from "@/components/ui/status-state";
+import { StatusState } from "@/components/ui/status-state";
 
 export default function FriendsError({ reset }: { reset: () => void }) {
   return (
     <main className="editorial-screen font-ui page-container grid min-h-dvh max-w-md place-items-center">
       <StatusState
-        action={
-          <button
-            className={statusActionClassName}
-            onClick={reset}
-            type="button"
-          >
-            Try again
-          </button>
-        }
+        action={<RetryButton reset={reset} />}
         description="Your friendships have not changed. Check your connection and try again."
         eyebrow="Friends unavailable"
         title="Lost the connection."

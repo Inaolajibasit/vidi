@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
@@ -21,7 +22,8 @@ function Submit({
 }) {
   const { pending } = useFormStatus();
   return (
-    <button
+    <Button
+      variant={variant === "primary" ? "primary" : "outline"}
       className={cn(
         "min-h-11 rounded-sm px-4 text-xs font-extrabold tracking-[0.04em] uppercase transition-transform active:scale-95 disabled:cursor-wait disabled:opacity-50",
         variant === "primary" && "bg-accent text-background",
@@ -29,10 +31,11 @@ function Submit({
         variant === "danger" && "text-danger border-danger/50 border",
       )}
       disabled={pending}
+      loadingLabel="Updating friendship…"
       type="submit"
     >
       {pending ? "Working…" : children}
-    </button>
+    </Button>
   );
 }
 

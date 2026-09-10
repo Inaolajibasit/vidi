@@ -11,8 +11,17 @@ export async function claimGuestHistory() {
   if (!data.user) return { status: "nothing_to_claim" } as const;
   return claimGuestHistoryForUser(data.user.id);
 }
-export async function signOutAction() {
-  const client = await createSupabaseServerClient();
-  if (client) await client.auth.signOut();
+export async function signOutAction(): Promise<{ message?: string }> {
+  try {
+    const client = await createSupabaseServerClient();
+    if (!client)
+      return { message: "Sign-out is unavailable. Please try again." };
+    const { error } = await client.auth.signOut();
+    if (error) return { message: "Couldn't sign out. Please try again." };
+  } catch {
+    return {
+      message: "Couldn't sign out. Check your connection and try again.",
+    };
+  }
   redirect("/");
 }

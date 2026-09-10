@@ -7,7 +7,11 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { trackServerAnalytics } from "@/lib/analytics/server";
 
-const inviteCodeSchema = z.string().trim().toUpperCase().regex(/^[A-Z0-9]{4,12}$/);
+const inviteCodeSchema = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^[A-Z0-9]{4,12}$/);
 const itemIdSchema = z.uuid();
 
 async function authenticatedProfileId() {
@@ -48,7 +52,8 @@ async function getOrCreatePersonalWatchlist(profileId: string) {
 }
 
 function personalMovieIds(metrics: unknown, playerId: string) {
-  if (!metrics || typeof metrics !== "object" || Array.isArray(metrics)) return [];
+  if (!metrics || typeof metrics !== "object" || Array.isArray(metrics))
+    return [];
   const lists = (metrics as Record<string, unknown>).personalWatchlists;
   if (!lists || typeof lists !== "object" || Array.isArray(lists)) return [];
   const ids = (lists as Record<string, unknown>)[playerId];
@@ -73,7 +78,9 @@ async function completedGameWatchlists(profileId: string, inviteCode: string) {
     .eq("game_id", game.id)
     .order("joined_at");
   if (playerError) throw playerError;
-  const currentPlayer = players?.find((player) => player.profile_id === profileId);
+  const currentPlayer = players?.find(
+    (player) => player.profile_id === profileId,
+  );
   if (!currentPlayer || !players || players.length < 2) return null;
 
   const { data: results, error: resultError } = await admin
@@ -83,7 +90,8 @@ async function completedGameWatchlists(profileId: string, inviteCode: string) {
   if (resultError) throw resultError;
   const group = results?.find((result) => !result.subject_player_id);
   const pair = results?.find((result) => result.subject_player_id);
-  const sharedMovieIds = group?.watchlist_movie_ids ?? pair?.watchlist_movie_ids ?? [];
+  const sharedMovieIds =
+    group?.watchlist_movie_ids ?? pair?.watchlist_movie_ids ?? [];
   const generatedPersonalIds = group
     ? personalMovieIds(group.metrics, currentPlayer.id)
     : [];
@@ -104,23 +112,33 @@ async function addMovies(
   sourceGameId: string | null,
 ) {
   if (!movieIds.length) return;
-  const { error } = await getSupabaseAdmin().from("watchlist_items").upsert(
-    movieIds.map((movieId) => ({
-      movie_id: movieId,
-      source_game_id: sourceGameId,
-      watchlist_id: watchlistId,
-    })),
-    { onConflict: "watchlist_id,movie_id" },
-  );
+  const { error } = await getSupabaseAdmin()
+    .from("watchlist_items")
+    .upsert(
+      movieIds.map((movieId) => ({
+        movie_id: movieId,
+        source_game_id: sourceGameId,
+        watchlist_id: watchlistId,
+      })),
+      { onConflict: "watchlist_id,movie_id" },
+    );
   if (error) throw error;
 }
 
 export async function savePersonalGameWatchlistAction(formData: FormData) {
   const code = inviteCodeSchema.safeParse(formData.get("inviteCode"));
   const profileId = await authenticatedProfileId();
-  if (!profileId || !code.success) return;
+  if (!profileId || !code.success)
+    return {
+      success: false,
+      message: "Sign in and reopen the completed game before saving.",
+    };
   const generated = await completedGameWatchlists(profileId, code.data);
-  if (!generated) return;
+  if (!generated)
+    return {
+      success: false,
+      message: "This game watchlist is not available to save.",
+    };
   const watchlistId = await getOrCreatePersonalWatchlist(profileId);
   await addMovies(watchlistId, generated.personalMovieIds, generated.gameId);
   await trackServerAnalytics(
@@ -135,9 +153,17 @@ export async function savePersonalGameWatchlistAction(formData: FormData) {
 export async function saveSharedGameWatchlistAction(formData: FormData) {
   const code = inviteCodeSchema.safeParse(formData.get("inviteCode"));
   const profileId = await authenticatedProfileId();
-  if (!profileId || !code.success) return;
+  if (!profileId || !code.success)
+    return {
+      success: false,
+      message: "Sign in and reopen the completed game before saving.",
+    };
   const generated = await completedGameWatchlists(profileId, code.data);
-  if (!generated) return;
+  if (!generated)
+    return {
+      success: false,
+      message: "This game watchlist is not available to save.",
+    };
 
   const admin = getSupabaseAdmin();
   const { data: existing, error: existingError } = await admin
@@ -201,37 +227,66 @@ async function ownedListIds(profileId: string) {
 export async function removeWatchlistItemAction(formData: FormData) {
   const itemId = itemIdSchema.safeParse(formData.get("itemId"));
   const profileId = await authenticatedProfileId();
-  if (!profileId || !itemId.success) return;
+  if (!profileId || !itemId.success)
+    return {
+      success: false,
+      message: "Sign in again to update this watchlist.",
+    };
   const listIds = await ownedListIds(profileId);
-  if (!listIds.length) return;
-  const { error } = await getSupabaseAdmin()
+  if (!listIds.length)
+    return {
+      success: false,
+      message: "This watchlist is no longer available.",
+    };
+  const { data: changed, error } = await getSupabaseAdmin()
     .from("watchlist_items")
     .delete()
     .eq("id", itemId.data)
-    .in("watchlist_id", listIds);
+    .in("watchlist_id", listIds)
+    .select("id");
   if (error) throw error;
+  if (!changed?.length)
+    return {
+      success: false,
+      message: "That movie is no longer in your watchlist.",
+    };
   revalidatePath("/watchlist");
 }
 
 export async function markWatchlistItemWatchedAction(formData: FormData) {
   const itemId = itemIdSchema.safeParse(formData.get("itemId"));
   const profileId = await authenticatedProfileId();
-  if (!profileId || !itemId.success) return;
+  if (!profileId || !itemId.success)
+    return {
+      success: false,
+      message: "Sign in again to update this watchlist.",
+    };
   const listIds = await ownedListIds(profileId);
-  if (!listIds.length) return;
-  const { error } = await getSupabaseAdmin()
+  if (!listIds.length)
+    return {
+      success: false,
+      message: "This watchlist is no longer available.",
+    };
+  const { data: changed, error } = await getSupabaseAdmin()
     .from("watchlist_items")
     .update({ watched_at: new Date().toISOString() })
     .eq("id", itemId.data)
-    .in("watchlist_id", listIds);
+    .in("watchlist_id", listIds)
+    .select("id");
   if (error) throw error;
+  if (!changed?.length)
+    return {
+      success: false,
+      message: "That movie is no longer in your watchlist.",
+    };
   revalidatePath("/watchlist");
 }
 
 export async function manuallyAddWatchlistItemAction(formData: FormData) {
   const movieId = z.uuid().safeParse(formData.get("movieId"));
   const profileId = await authenticatedProfileId();
-  if (!profileId || !movieId.success) return;
+  if (!profileId || !movieId.success)
+    return { success: false, message: "Sign in again to add this movie." };
   const watchlistId = await getOrCreatePersonalWatchlist(profileId);
   await addMovies(watchlistId, [movieId.data], null);
   await trackServerAnalytics("watchlist_saved", {
